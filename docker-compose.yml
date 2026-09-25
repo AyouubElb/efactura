@@ -1,0 +1,38 @@
+# Local development only — stand-ins for the cloud services
+name: efactura
+
+services:
+  postgres: # replaces Neon
+    image: postgres:17
+    environment:
+      POSTGRES_USER: efactura
+      POSTGRES_PASSWORD: efactura
+      POSTGRES_DB: efactura
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U efactura -d efactura"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis: # replaces Redis Cloud — the BullMQ queue
+    image: redis:7
+    ports:
+      - "6380:6379" # 6380 on the host, so it never clashes with a Redis already installed on the PC
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mailpit: # replaces Resend — every email lands in a local inbox
+    image: axllent/mailpit
+    ports:
+      - "1025:1025" # SMTP — the API sends here
+      - "8025:8025" # the inbox, in the browser: http://localhost:8025
+
+volumes:
+  postgres-data:

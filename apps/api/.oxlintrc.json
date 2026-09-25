@@ -1,0 +1,43 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "rules": {
+    "typescript/no-explicit-any": "off",
+    "typescript/no-floating-promises": "error",
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "openai",
+            "message": "Only src/modules/purchases/extraction.service.ts may import OpenAI."
+          },
+          {
+            "name": "nodemailer",
+            "message": "Only src/modules/email/email.service.ts may import Nodemailer."
+          }
+        ],
+        "patterns": [
+          {
+            "group": ["@aws-sdk/*"],
+            "message": "Only src/modules/storage/storage.service.ts may import the S3 client."
+          }
+        ]
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": [
+        "src/modules/purchases/extraction.service.ts",
+        "src/modules/email/email.service.ts",
+        "src/modules/storage/storage.service.ts"
+      ],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    }
+  ],
+  "env": {
+    "node": true
+  }
+}

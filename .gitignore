@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Build output and caches
+dist/
+.turbo/
+coverage/
+*.tsbuildinfo
+
+# Environment — real values never enter the repository
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# Design docs — private for now
+docs/
+
+# Claude Code — skills and settings stay on this PC
+.claude/
+
+# OS and editors
+.DS_Store
+Thumbs.db
+.idea/
