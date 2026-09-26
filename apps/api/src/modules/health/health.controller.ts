@@ -1,5 +1,9 @@
 import { Controller, Get } from '@nestjs/common';
-import { HealthCheck, HealthCheckService, PrismaHealthIndicator } from '@nestjs/terminus';
+import {
+  HealthCheck,
+  HealthCheckService,
+  PrismaHealthIndicator,
+} from '@nestjs/terminus';
 import { PrismaService } from '../../common/prisma/prisma.service.js';
 
 @Controller('health')
@@ -14,6 +18,9 @@ export class HealthController {
   @Get()
   @HealthCheck()
   check() {
-    return this.health.check([() => this.database.pingCheck('database', this.prisma)]);
+    // A sleeping Neon database wakes in under a second; Render gives up after 5
+    return this.health.check([
+      () => this.database.pingCheck('database', this.prisma).withTimeout(3000),
+    ]);
   }
 }
