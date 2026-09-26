@@ -7,6 +7,9 @@ dist/
 coverage/
 *.tsbuildinfo
 
+# Prisma client — regenerated after each install
+apps/api/src/generated/
+
 # Environment — real values never enter the repository
 .env
 .env.*
@@ -20,6 +23,7 @@ docs/
 
 # Claude Code — skills and settings stay on this PC
 .claude/
+skills-lock.json
 
 # OS and editors
 .DS_Store

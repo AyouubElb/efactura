@@ -1,14 +1,19 @@
 import { Controller, Get } from '@nestjs/common';
-import { HealthCheck, HealthCheckService } from '@nestjs/terminus';
+import { HealthCheck, HealthCheckService, PrismaHealthIndicator } from '@nestjs/terminus';
+import { PrismaService } from '../../common/prisma/prisma.service.js';
 
 @Controller('health')
 export class HealthController {
-  constructor(private readonly health: HealthCheckService) {}
+  constructor(
+    private readonly health: HealthCheckService,
+    private readonly database: PrismaHealthIndicator,
+    private readonly prisma: PrismaService,
+  ) {}
 
   // Public: the host's health check calls it, and it wakes a sleeping API
   @Get()
   @HealthCheck()
   check() {
-    return this.health.check([]);
+    return this.health.check([() => this.database.pingCheck('database', this.prisma)]);
   }
 }

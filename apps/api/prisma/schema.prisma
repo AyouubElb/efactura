@@ -1,0 +1,541 @@
+// Models are camelCase in TypeScript and snake_case in the database.
+// Rules Prisma can't express live in the hand-written migrations.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  admin
+  staff
+
+  @@map("role")
+}
+
+enum UserStatus {
+  invited
+  active
+  off
+
+  @@map("user_status")
+}
+
+enum TokenPurpose {
+  invite
+  reset
+
+  @@map("token_purpose")
+}
+
+enum ClientType {
+  company
+  individual
+
+  @@map("client_type")
+}
+
+enum Series {
+  FA // invoices
+  DV // quotes
+  AV // avoirs
+
+  @@map("series")
+}
+
+enum QuoteStatus {
+  draft
+  sent
+  accepted
+  refused
+  replaced
+
+  @@map("quote_status")
+}
+
+enum InvoiceStatus {
+  draft
+  sent
+  paid
+  cancelled
+
+  @@map("invoice_status")
+}
+
+enum PurchaseStatus {
+  uploaded
+  reading
+  ready
+  confirmed
+  failed
+  discarded
+
+  @@map("purchase_status")
+}
+
+enum MatchMethod {
+  saved_name
+  reference
+  closest_name
+  manual
+  new_product
+
+  @@map("match_method")
+}
+
+enum PaymentMethod {
+  cash
+  cheque
+  transfer
+  card
+  effet
+
+  @@map("payment_method")
+}
+
+enum SendChannel {
+  whatsapp
+  email
+  download
+
+  @@map("send_channel")
+}
+
+enum DocumentType {
+  quote
+  invoice
+  credit_note
+
+  @@map("document_type")
+}
+
+// ---------------------------------------------------------------------------
+// People and access
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String     @id @default(uuid()) @db.Uuid
+  fullName     String     @map("full_name")
+  email        String     @unique
+  passwordHash String?    @map("password_hash") // empty until the invitation is accepted
+  role         Role       @default(staff)
+  status       UserStatus @default(invited)
+  lastLoginAt  DateTime?  @map("last_login_at")
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  refreshTokens        RefreshToken[]
+  oneTimeTokens        OneTimeToken[]
+  purchasesUploaded    PurchaseInvoice[] @relation("PurchaseUploadedBy")
+  purchasesConfirmed   PurchaseInvoice[] @relation("PurchaseConfirmedBy")
+  quotesCreated        Quote[]           @relation("QuoteCreatedBy")
+  quotesSent           Quote[]           @relation("QuoteSentBy")
+  invoicesCreated      Invoice[]         @relation("InvoiceCreatedBy")
+  invoicesSent         Invoice[]         @relation("InvoiceSentBy")
+  invoicesPaidRecorded Invoice[]         @relation("InvoicePaidRecordedBy")
+  creditNotesCreated   CreditNote[]
+  activities           ActivityLog[]
+  shareLinksCreated    ShareLink[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  user      User      @relation(fields: [userId], references: [id])
+  familyId  String    @map("family_id") @db.Uuid // all tokens of one login session
+  tokenHash String    @unique @map("token_hash") // SHA-256: the token itself only lives in the cookie
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([familyId])
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model OneTimeToken {
+  id        String       @id @default(uuid()) @db.Uuid
+  userId    String       @map("user_id") @db.Uuid
+  user      User         @relation(fields: [userId], references: [id])
+  purpose   TokenPurpose
+  tokenHash String       @unique @map("token_hash")
+  expiresAt DateTime     @map("expires_at") // invite: 7 days, reset: 1 hour
+  usedAt    DateTime?    @map("used_at")
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  @@map("one_time_tokens")
+}
+
+// ---------------------------------------------------------------------------
+// The shop
+// ---------------------------------------------------------------------------
+
+model ShopSettings {
+  id                        Int      @id @default(1) // single row, enforced by a CHECK
+  legalName                 String   @map("legal_name")
+  address                   String
+  city                      String
+  phone                     String?
+  email                     String?
+  ice                       String   @db.Char(15)
+  ifNumber                  String   @map("if_number")
+  tpNumber                  String   @map("tp_number")
+  rcNumber                  String   @map("rc_number")
+  rcCity                    String   @map("rc_city")
+  bankName                  String?  @map("bank_name")
+  rib                       String?  @db.Char(24)
+  logoKey                   String?  @map("logo_key")
+  defaultPaymentDays        Int      @default(60) @map("default_payment_days")
+  defaultQuoteValidityDays  Int      @default(30) @map("default_quote_validity_days")
+  priceRiseThresholdPercent Int      @default(10) @map("price_rise_threshold_percent")
+  tvaRatesBp                Int[]    @default([2000, 1000, 0]) @map("tva_rates_bp")
+  updatedAt                 DateTime @updatedAt @map("updated_at")
+
+  @@map("shop_settings")
+}
+
+model NumberCounter {
+  series     Series
+  year       Int
+  lastNumber Int    @default(0) @map("last_number")
+
+  @@id([series, year])
+  @@map("number_counters")
+}
+
+// ---------------------------------------------------------------------------
+// Who we deal with, and what we sell
+// ---------------------------------------------------------------------------
+
+model Client {
+  id          String     @id @default(uuid()) @db.Uuid
+  type        ClientType
+  name        String
+  ice         String?    @db.Char(15) // required for a company, enforced by a CHECK
+  address     String?
+  city        String?
+  email       String?
+  phone       String?
+  paymentDays Int        @default(60) @map("payment_days") // 0 to 120, enforced by a CHECK
+  archivedAt  DateTime?  @map("archived_at")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  quotes   Quote[]
+  invoices Invoice[]
+
+  @@map("clients")
+}
+
+model Supplier {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  ice       String?  @unique @db.Char(15) // how the supplier is recognised
+  ifNumber  String?  @map("if_number")
+  address   String?
+  city      String?
+  phone     String?
+  email     String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  savedNames  SupplierProductName[]
+  purchases   PurchaseInvoice[]
+  lastCostFor Product[]             @relation("ProductLastSupplier")
+
+  @@map("suppliers")
+}
+
+model Product {
+  id                 String    @id @default(uuid()) @db.Uuid
+  name               String
+  reference          String?
+  unit               String    @default("pièce")
+  priceHtCentimes    Int       @map("price_ht_centimes") // typed by a person, before tax
+  tvaRateBp          Int       @map("tva_rate_bp") // 2000 = 20 %
+  lastCostHtCentimes Int?      @map("last_cost_ht_centimes") // only set by confirmed supplier invoices
+  lastCostAt         DateTime? @map("last_cost_at")
+  lastSupplierId     String?   @map("last_supplier_id") @db.Uuid
+  lastSupplier       Supplier? @relation("ProductLastSupplier", fields: [lastSupplierId], references: [id])
+  archivedAt         DateTime? @map("archived_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  savedNames    SupplierProductName[]
+  purchaseLines PurchaseLine[]
+  quoteLines    QuoteLine[]
+  invoiceLines  InvoiceLine[]
+
+  @@index([reference])
+  @@map("products")
+}
+
+model SupplierProductName {
+  id              String   @id @default(uuid()) @db.Uuid
+  supplierId      String   @map("supplier_id") @db.Uuid
+  supplier        Supplier @relation(fields: [supplierId], references: [id])
+  labelRaw        String   @map("label_raw") // "HP 250G10 I5-1335U 8/512 W11"
+  labelKey        String   @map("label_key") // "hp 250g10 i5 1335u 8 512 w11"
+  productId       String   @map("product_id") @db.Uuid
+  product         Product  @relation(fields: [productId], references: [id])
+  timesConfirmed  Int      @default(1) @map("times_confirmed")
+  lastConfirmedAt DateTime @default(now()) @map("last_confirmed_at")
+
+  @@unique([supplierId, labelKey]) // a saved name is found with one index lookup
+  @@map("supplier_product_names")
+}
+
+// ---------------------------------------------------------------------------
+// Buying
+// ---------------------------------------------------------------------------
+
+model PurchaseInvoice {
+  id             String         @id @default(uuid()) @db.Uuid
+  status         PurchaseStatus @default(uploaded)
+  fileKey        String         @map("file_key")
+  fileType       String         @map("file_type")
+  fileSize       Int            @map("file_size")
+  pageCount      Int?           @map("page_count")
+  fileSha256     String         @unique @map("file_sha256") @db.Char(64) // the same file is never imported twice
+  proposal       Json? // the AI's answer, untouched
+  reviewDraft    Json?          @map("review_draft") // the person's edits so far
+  aiModel        String?        @map("ai_model")
+  aiInputTokens  Int?           @map("ai_input_tokens")
+  aiOutputTokens Int?           @map("ai_output_tokens")
+  aiCostMicroUsd Int?           @map("ai_cost_micro_usd")
+  attempts       Int            @default(0)
+  error          String?
+  uploadedById   String         @map("uploaded_by_id") @db.Uuid
+  uploadedBy     User           @relation("PurchaseUploadedBy", fields: [uploadedById], references: [id])
+
+  // filled at confirmation
+  supplierId            String?   @map("supplier_id") @db.Uuid
+  supplier              Supplier? @relation(fields: [supplierId], references: [id])
+  supplierInvoiceNumber String?   @map("supplier_invoice_number")
+  invoiceDate           DateTime? @map("invoice_date") @db.Date
+  invoiceYear           Int?      @map("invoice_year")
+  totalHtCentimes       Int?      @map("total_ht_centimes")
+  totalTvaCentimes      Int?      @map("total_tva_centimes")
+  totalTtcCentimes      Int?      @map("total_ttc_centimes")
+  confirmedById         String?   @map("confirmed_by_id") @db.Uuid
+  confirmedBy           User?     @relation("PurchaseConfirmedBy", fields: [confirmedById], references: [id])
+  confirmedAt           DateTime? @map("confirmed_at")
+
+  createdAt DateTime       @default(now()) @map("created_at")
+  updatedAt DateTime       @updatedAt @map("updated_at")
+  lines     PurchaseLine[]
+
+  @@index([status])
+  @@index([invoiceDate])
+  @@map("purchase_invoices")
+}
+
+model PurchaseLine {
+  id                     String          @id @default(uuid()) @db.Uuid
+  purchaseId             String          @map("purchase_id") @db.Uuid
+  purchase               PurchaseInvoice @relation(fields: [purchaseId], references: [id])
+  position               Int
+  labelRaw               String          @map("label_raw")
+  productId              String          @map("product_id") @db.Uuid
+  product                Product         @relation(fields: [productId], references: [id])
+  matchMethod            MatchMethod     @map("match_method")
+  quantity               Decimal         @db.Decimal(12, 3)
+  unitCostHtCentimes     Int             @map("unit_cost_ht_centimes")
+  lineTotalHtCentimes    Int             @map("line_total_ht_centimes")
+  tvaRateBp              Int             @map("tva_rate_bp")
+  previousCostHtCentimes Int?            @map("previous_cost_ht_centimes") // the cost before this purchase
+
+  @@index([productId])
+  @@map("purchase_lines")
+}
+
+// ---------------------------------------------------------------------------
+// Selling
+// ---------------------------------------------------------------------------
+
+model Quote {
+  id                String       @id @default(uuid()) @db.Uuid
+  number            String? // empty while a first version is a draft
+  version           Int          @default(1)
+  previousVersionId String?      @unique @map("previous_version_id") @db.Uuid
+  previousVersion   Quote?       @relation("QuoteVersions", fields: [previousVersionId], references: [id])
+  nextVersion       Quote?       @relation("QuoteVersions")
+  status            QuoteStatus  @default(draft)
+  clientId          String       @map("client_id") @db.Uuid
+  client            Client       @relation(fields: [clientId], references: [id])
+  issueDate         DateTime?    @map("issue_date") @db.Date
+  validUntil        DateTime?    @map("valid_until") @db.Date
+  clientSnapshot    Json?        @map("client_snapshot")
+  shopSnapshot      Json?        @map("shop_snapshot")
+  totalHtCentimes   Int          @default(0) @map("total_ht_centimes")
+  totalTvaCentimes  Int          @default(0) @map("total_tva_centimes")
+  totalTtcCentimes  Int          @default(0) @map("total_ttc_centimes")
+  tvaBreakdown      Json?        @map("tva_breakdown")
+  totalInWords      String?      @map("total_in_words")
+  pdfKey            String?      @map("pdf_key")
+  sentVia           SendChannel? @map("sent_via")
+  sentAt            DateTime?    @map("sent_at")
+  sentById          String?      @map("sent_by_id") @db.Uuid
+  sentBy            User?        @relation("QuoteSentBy", fields: [sentById], references: [id])
+  notes             String?
+  createdById       String       @map("created_by_id") @db.Uuid
+  createdBy         User         @relation("QuoteCreatedBy", fields: [createdById], references: [id])
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+
+  lines   QuoteLine[]
+  invoice Invoice?
+
+  @@unique([number, version]) // v1 and v2 of one quote can coexist, two v1s can't
+  @@index([status])
+  @@index([clientId])
+  @@map("quotes")
+}
+
+model QuoteLine {
+  id                  String   @id @default(uuid()) @db.Uuid
+  quoteId             String   @map("quote_id") @db.Uuid
+  quote               Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  position            Int
+  productId           String?  @map("product_id") @db.Uuid // for reports only, never read to display
+  product             Product? @relation(fields: [productId], references: [id])
+  label               String
+  reference           String?
+  unit                String
+  quantity            Decimal  @db.Decimal(12, 3)
+  unitPriceHtCentimes Int      @map("unit_price_ht_centimes")
+  tvaRateBp           Int      @map("tva_rate_bp")
+  lineTotalHtCentimes Int      @map("line_total_ht_centimes")
+
+  @@map("quote_lines")
+}
+
+model Invoice {
+  id               String         @id @default(uuid()) @db.Uuid
+  number           String?        @unique // given at "Envoyer"
+  status           InvoiceStatus  @default(draft)
+  clientId         String         @map("client_id") @db.Uuid
+  client           Client         @relation(fields: [clientId], references: [id])
+  quoteId          String?        @unique @map("quote_id") @db.Uuid // a quote converts once
+  quote            Quote?         @relation(fields: [quoteId], references: [id])
+  issueDate        DateTime?      @map("issue_date") @db.Date
+  dueDate          DateTime?      @map("due_date") @db.Date
+  clientSnapshot   Json?          @map("client_snapshot")
+  shopSnapshot     Json?          @map("shop_snapshot")
+  totalHtCentimes  Int            @default(0) @map("total_ht_centimes")
+  totalTvaCentimes Int            @default(0) @map("total_tva_centimes")
+  totalTtcCentimes Int            @default(0) @map("total_ttc_centimes")
+  tvaBreakdown     Json?          @map("tva_breakdown")
+  totalInWords     String?        @map("total_in_words")
+  pdfKey           String?        @map("pdf_key")
+  sentVia          SendChannel?   @map("sent_via")
+  sentAt           DateTime?      @map("sent_at")
+  sentById         String?        @map("sent_by_id") @db.Uuid
+  sentBy           User?          @relation("InvoiceSentBy", fields: [sentById], references: [id])
+  paidOn           DateTime?      @map("paid_on") @db.Date
+  paymentMethod    PaymentMethod? @map("payment_method")
+  paymentReference String?        @map("payment_reference")
+  paidRecordedById String?        @map("paid_recorded_by_id") @db.Uuid
+  paidRecordedBy   User?          @relation("InvoicePaidRecordedBy", fields: [paidRecordedById], references: [id])
+  notes            String?
+  createdById      String         @map("created_by_id") @db.Uuid
+  createdBy        User           @relation("InvoiceCreatedBy", fields: [createdById], references: [id])
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  lines      InvoiceLine[]
+  creditNote CreditNote?
+
+  @@index([status, dueDate]) // "late" and "waiting"
+  @@index([paidOn]) // "collected this month"
+  @@index([clientId])
+  @@map("invoices")
+}
+
+model InvoiceLine {
+  id                  String   @id @default(uuid()) @db.Uuid
+  invoiceId           String   @map("invoice_id") @db.Uuid
+  invoice             Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  position            Int
+  productId           String?  @map("product_id") @db.Uuid
+  product             Product? @relation(fields: [productId], references: [id])
+  label               String
+  reference           String?
+  unit                String
+  quantity            Decimal  @db.Decimal(12, 3)
+  unitPriceHtCentimes Int      @map("unit_price_ht_centimes")
+  tvaRateBp           Int      @map("tva_rate_bp")
+  lineTotalHtCentimes Int      @map("line_total_ht_centimes")
+
+  @@map("invoice_lines")
+}
+
+model CreditNote {
+  id               String       @id @default(uuid()) @db.Uuid
+  number           String       @unique // AV-2026-0001
+  invoiceId        String       @unique @map("invoice_id") @db.Uuid // an invoice is cancelled once
+  invoice          Invoice      @relation(fields: [invoiceId], references: [id])
+  reason           String
+  clientSnapshot   Json         @map("client_snapshot")
+  shopSnapshot     Json         @map("shop_snapshot")
+  totalHtCentimes  Int          @map("total_ht_centimes") // negative
+  totalTvaCentimes Int          @map("total_tva_centimes") // negative
+  totalTtcCentimes Int          @map("total_ttc_centimes") // negative
+  totalInWords     String       @map("total_in_words")
+  pdfKey           String?      @map("pdf_key")
+  sentVia          SendChannel? @map("sent_via")
+  createdById      String       @map("created_by_id") @db.Uuid
+  createdBy        User         @relation(fields: [createdById], references: [id])
+  createdAt        DateTime     @default(now()) @map("created_at")
+
+  @@map("credit_notes")
+}
+
+// ---------------------------------------------------------------------------
+// Traces and sharing
+// ---------------------------------------------------------------------------
+
+model ActivityLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String?  @map("user_id") @db.Uuid // empty = the system, for example a queued PDF retry
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String // "invoice.paid"
+  entityType String   @map("entity_type") // "invoice"
+  entityId   String   @map("entity_id") // text, because the settings row's id is not a UUID
+  summary    String // "a marqué la facture FA-2026-0016 payée"
+  details    Json? // values before and after
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([entityType, entityId]) // a document's history
+  @@index([createdAt]) // the Activity page
+  @@index([userId, createdAt]) // filter by person
+  @@map("activity_log")
+}
+
+model ShareLink {
+  id           String       @id @default(uuid()) @db.Uuid
+  tokenHash    String       @unique @map("token_hash")
+  documentType DocumentType @map("document_type")
+  documentId   String       @map("document_id") @db.Uuid
+  expiresAt    DateTime     @map("expires_at") // 90 days
+  revokedAt    DateTime?    @map("revoked_at")
+  openCount    Int          @default(0) @map("open_count")
+  lastOpenedAt DateTime?    @map("last_opened_at")
+  createdById  String       @map("created_by_id") @db.Uuid
+  createdBy    User         @relation(fields: [createdById], references: [id])
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  @@index([documentType, documentId])
+  @@map("share_links")
+}
