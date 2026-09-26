@@ -25,6 +25,9 @@ docs/
 .claude/
 skills-lock.json
 
+# Local database setup — stays on this PC
+docker/
+
 # OS and editors
 .DS_Store
 Thumbs.db
