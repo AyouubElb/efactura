@@ -1,0 +1,31 @@
+# The API on Render, created once with New → Blueprint.
+# This file wins over the dashboard. Secrets are typed into Render, never written here.
+services:
+  - type: web
+    name: efactura-api
+    runtime: node
+    plan: free
+    region: frankfurt
+    # Render's own pnpm can't be replaced, so npx runs the version from packageManager in package.json.
+    # --prod=false keeps the build tools that NODE_ENV=production would skip.
+    buildCommand: npx --yes pnpm@12.6.0 install --frozen-lockfile --prod=false && npx --yes pnpm@12.6.0 --filter api build
+    startCommand: node apps/api/dist/main.js
+    healthCheckPath: /health
+    # GitHub's checks apply the migrations, so Render waits for them
+    autoDeployTrigger: checksPass
+    # Only changes that reach the API start a deploy
+    buildFilter:
+      paths:
+        - apps/api/**
+        - packages/**
+        - package.json
+        - pnpm-lock.yaml
+        - pnpm-workspace.yaml
+        - .node-version
+        - render.yaml
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # efactura_app on Neon's -pooler host, ending ?sslmode=verify-full
+      - key: DATABASE_URL
+        sync: false
