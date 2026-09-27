@@ -1,0 +1,27 @@
+{
+  "name": "@efactura/shared",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Money, totals, total in words, ICE and Morocco dates, shared by the API and the screens",
+  "license": "UNLICENSED",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch --preserveWatchOutput",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint --type-aware src/",
+    "format": "prettier --write \"src/**/*.ts\""
+  },
+  "devDependencies": {
+    "oxlint": "^1.58.0",
+    "oxlint-tsgolint": "^7.0.2001",
+    "prettier": "^3.4.2",
+    "typescript": "^6.0.2"
+  }
+}

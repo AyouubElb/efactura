@@ -172,6 +172,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@efactura/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.1.0(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0)
@@ -266,6 +269,21 @@ importers:
       vitest:
         specifier: ^4.1.2
         version: 4.1.11(@types/node@24.13.6)(@vitest/coverage-v8@4.1.11)(vite@8.3.1(@types/node@24.13.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
+
+  packages/shared:
+    devDependencies:
+      oxlint:
+        specifier: ^1.58.0
+        version: 1.85.0(oxlint-tsgolint@7.0.2003)
+      oxlint-tsgolint:
+        specifier: ^7.0.2001
+        version: 7.0.2003
+      prettier:
+        specifier: ^3.4.2
+        version: 3.9.9
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.3
 
 packages:
 

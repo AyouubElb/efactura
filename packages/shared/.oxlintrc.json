@@ -1,0 +1,16 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["node:*", "@nestjs/*", "@prisma/*", "react", "react-dom", "next", "next/*"],
+            "message": "The shared package stays pure: no Node APIs, no framework, no database."
+          }
+        ]
+      }
+    ]
+  }
+}
