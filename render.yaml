@@ -29,3 +29,8 @@ services:
       # efactura_app on Neon's -pooler host, ending ?sslmode=verify-full
       - key: DATABASE_URL
         sync: false
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      # Copied to Vercel with the web app
+      - key: INTERNAL_API_KEY
+        generateValue: true

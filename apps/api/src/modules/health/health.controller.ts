@@ -5,8 +5,10 @@ import {
   PrismaHealthIndicator,
 } from '@nestjs/terminus';
 import { PrismaService } from '../../common/prisma/prisma.service.js';
+import { RawResponse } from '../../common/response/raw-response.decorator.js';
 
 @Controller('health')
+@RawResponse()
 export class HealthController {
   constructor(
     private readonly health: HealthCheckService,
