@@ -7,7 +7,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiSecurity, ApiTags } from '@nestjs/swagger';
-import { ThrottlerGuard } from '@nestjs/throttler';
+import { SkipThrottle, ThrottlerGuard } from '@nestjs/throttler';
 import type { AuthUser } from '../../common/auth/auth-user.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { AuthGuard } from '../../common/guards/auth.guard.js';
@@ -20,6 +20,7 @@ import {
   TokenPairDto,
 } from './dto/auth-responses.dto.js';
 import { LoginDto } from './dto/login.dto.js';
+import { ForgotPasswordDto, SetPasswordDto } from './dto/password.dto.js';
 import { RefreshDto } from './dto/refresh.dto.js';
 import { TokensService } from './tokens.service.js';
 
@@ -62,5 +63,29 @@ export class AuthController {
   @ApiDataResponse(MeDto)
   me(@CurrentUser() user: AuthUser) {
     return this.auth.me(user);
+  }
+
+  // No email in the body: the per-account limit would put everyone in one bucket
+  @Post('invite/accept')
+  @HttpCode(200)
+  @UseGuards(ThrottlerGuard)
+  @SkipThrottle({ email: true })
+  acceptInvite(@Body() dto: SetPasswordDto) {
+    return this.auth.acceptInvite(dto);
+  }
+
+  @Post('password/forgot')
+  @HttpCode(200)
+  @UseGuards(ThrottlerGuard)
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.auth.forgotPassword(dto);
+  }
+
+  @Post('password/reset')
+  @HttpCode(200)
+  @UseGuards(ThrottlerGuard)
+  @SkipThrottle({ email: true })
+  resetPassword(@Body() dto: SetPasswordDto) {
+    return this.auth.resetPassword(dto);
   }
 }

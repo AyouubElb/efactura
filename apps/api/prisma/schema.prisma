@@ -175,6 +175,11 @@ model OneTimeToken {
   usedAt    DateTime?    @map("used_at")
   createdAt DateTime     @default(now()) @map("created_at")
 
+  // set by the mail queue: the link only exists in the email
+  emailSentAt   DateTime? @map("email_sent_at")
+  emailFailedAt DateTime? @map("email_failed_at")
+
+  @@index([userId, purpose])
   @@map("one_time_tokens")
 }
 

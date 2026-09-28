@@ -34,3 +34,20 @@ services:
       # Copied to Vercel with the web app
       - key: INTERNAL_API_KEY
         generateValue: true
+      - key: LINK_SECRET
+        generateValue: true
+      # Redis Cloud, Frankfurt: the email queue
+      - key: REDIS_URL
+        sync: false
+      # smtps://resend:<API key>@smtp.resend.com:465
+      - key: SMTP_URL
+        sync: false
+      # Resend's test sender until the shop's domain is verified
+      - key: EMAIL_FROM
+        value: eFactura <onboarding@resend.dev>
+      # The web app's address, for the links in emails
+      - key: APP_URL
+        sync: false
+      # The Resend account's own address, while the test sender is used
+      - key: EMAIL_REDIRECT_TO
+        sync: false

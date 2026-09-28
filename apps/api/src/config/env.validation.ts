@@ -1,8 +1,11 @@
 import { plainToInstance } from 'class-transformer';
 import {
+  IsEmail,
   IsEnum,
   IsInt,
+  IsOptional,
   IsString,
+  IsUrl,
   Matches,
   Max,
   Min,
@@ -39,6 +42,35 @@ export class EnvironmentVariables {
   @IsString()
   @MinLength(32)
   INTERNAL_API_KEY: string;
+
+  // Signs the invitation and reset links; apart from the login secret
+  @IsString()
+  @MinLength(32)
+  LINK_SECRET: string;
+
+  @Matches(/^rediss?:\/\/.+/, {
+    message: 'REDIS_URL must be a redis:// or rediss:// URL',
+  })
+  REDIS_URL: string;
+
+  // Mailpit on the PC; Resend in production, its API key as the password
+  @Matches(/^smtps?:\/\/.+/, {
+    message: 'SMTP_URL must be an smtp:// or smtps:// URL',
+  })
+  SMTP_URL: string;
+
+  @IsString()
+  @MinLength(3)
+  EMAIL_FROM: string;
+
+  // The web app: email links point there
+  @IsUrl({ require_tld: false, require_protocol: true })
+  APP_URL: string;
+
+  // Resend's test sender only delivers to the account owner
+  @IsOptional()
+  @IsEmail()
+  EMAIL_REDIRECT_TO?: string;
 }
 
 // Runs once at startup: a missing or wrong setting stops the API with a clear message

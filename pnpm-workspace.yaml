@@ -6,6 +6,7 @@ allowBuilds:
   '@scarf/scarf': false
   argon2: true
   esbuild: true
+  msgpackr-extract: false
   prisma: true
 minimumReleaseAgeExclude:
   - '@turbo/darwin-64@2.11.4'

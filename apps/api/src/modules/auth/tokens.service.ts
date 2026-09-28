@@ -1,7 +1,8 @@
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import type { AccessTokenClaims } from '../../common/auth/auth-user.js';
+import { hashToken } from '../../common/auth/token-hash.js';
 import { PrismaService } from '../../common/prisma/prisma.service.js';
 import type { Prisma, RefreshToken } from '../../generated/prisma/client.js';
 import { ActivityService } from '../activity/activity.service.js';
@@ -41,7 +42,7 @@ export class TokensService {
       data: {
         userId,
         familyId,
-        tokenHash: hash(refreshToken),
+        tokenHash: hashToken(refreshToken),
         expiresAt: refreshExpiresAt,
       },
     });
@@ -52,7 +53,7 @@ export class TokensService {
 
   async rotate(refreshToken: string): Promise<TokenPair> {
     const token = await this.prisma.refreshToken.findUnique({
-      where: { tokenHash: hash(refreshToken) },
+      where: { tokenHash: hashToken(refreshToken) },
       include: { user: { select: { status: true } } },
     });
     if (
@@ -87,6 +88,14 @@ export class TokensService {
     });
   }
 
+  // Every session of this person: password reset, account turned off
+  revokeAllForUser(userId: string, tx: Prisma.TransactionClient) {
+    return tx.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+  }
+
   private async refuseReuse(token: RefreshToken, usedAt: Date): Promise<never> {
     if (Date.now() - usedAt.getTime() <= REUSE_GRACE_MS) {
       throw new UnauthorizedException(ALREADY_REFRESHED);
@@ -107,9 +116,4 @@ export class TokensService {
       message: 'Session révoquée, reconnectez-vous',
     });
   }
-}
-
-// Only the hash is stored: a database leak holds no usable token
-function hash(token: string): string {
-  return createHash('sha256').update(token).digest('hex');
 }

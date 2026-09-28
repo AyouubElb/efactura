@@ -39,7 +39,8 @@ export class ApiExceptionFilter implements ExceptionFilter {
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const error = toApiError(exception);
-    if (error.statusCode >= 500) {
+    // Our own coded 5xx, like EMAIL_NOT_QUEUED, are logged where they happen
+    if (error.statusCode >= 500 && !hasOwnCode(exception)) {
       this.logger.error(
         exception instanceof Error ? exception.stack : exception,
       );
@@ -52,15 +53,24 @@ export class ApiExceptionFilter implements ExceptionFilter {
   }
 }
 
+// Our errors carry a code: new ConflictException({ code, message })
+function hasOwnCode(exception: unknown): exception is HttpException {
+  if (!(exception instanceof HttpException)) {
+    return false;
+  }
+  const body = exception.getResponse();
+  return typeof body === 'object' && 'code' in body;
+}
+
 function toApiError(exception: unknown): ApiError {
+  if (hasOwnCode(exception)) {
+    return {
+      statusCode: exception.getStatus(),
+      ...(exception.getResponse() as Omit<ApiError, 'statusCode'>),
+    };
+  }
   if (exception instanceof HttpException) {
-    const statusCode = exception.getStatus();
-    const body = exception.getResponse();
-    // Our errors carry a code: new ConflictException({ code, message })
-    if (typeof body === 'object' && 'code' in body) {
-      return { statusCode, ...(body as Omit<ApiError, 'statusCode'>) };
-    }
-    return withDefaults(statusCode);
+    return withDefaults(exception.getStatus());
   }
   if (exception instanceof Prisma.PrismaClientKnownRequestError) {
     return fromPrisma(exception);
