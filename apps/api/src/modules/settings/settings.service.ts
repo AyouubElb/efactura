@@ -3,6 +3,7 @@ import type { AuthUser } from '../../common/auth/auth-user.js';
 import { PrismaService } from '../../common/prisma/prisma.service.js';
 import type { ShopSettings } from '../../generated/prisma/client.js';
 import { ActivityService } from '../activity/activity.service.js';
+import { changes } from '../activity/changes.js';
 import type { SettingsDto, UpdateSettingsDto } from './dto/settings.dto.js';
 
 // The database defaults, served before the admin fills the settings
@@ -60,6 +61,8 @@ export class SettingsService {
     };
 
     const row = await this.prisma.$transaction(async (tx) => {
+      // Two saves at once: the second waits and reads the first one's values
+      await tx.$queryRaw`SELECT 1 FROM shop_settings WHERE id = ${SETTINGS_ID} FOR UPDATE`;
       const before = await tx.shopSettings.findUnique({
         where: { id: SETTINGS_ID },
       });
@@ -69,8 +72,8 @@ export class SettingsService {
         update: data,
       });
 
-      const changes = diff(before, data);
-      if (changes) {
+      const changed = changes(before, data);
+      if (changed) {
         await this.activity.record(
           tx,
           admin,
@@ -79,7 +82,7 @@ export class SettingsService {
           before
             ? 'a modifié les paramètres de la boutique'
             : 'a rempli les paramètres de la boutique',
-          changes,
+          changed,
         );
       }
       return saved;
@@ -89,19 +92,6 @@ export class SettingsService {
 }
 
 type SettingsData = Omit<ShopSettings, 'id' | 'logoKey' | 'updatedAt'>;
-
-// Only the fields that changed, before and after
-function diff(before: ShopSettings | null, after: SettingsData) {
-  const changed = (Object.keys(after) as (keyof SettingsData)[]).filter(
-    (key) => JSON.stringify(before?.[key]) !== JSON.stringify(after[key]),
-  );
-  if (changed.length === 0) {
-    return null;
-  }
-  const pick = (source: Partial<SettingsData> | null) =>
-    Object.fromEntries(changed.map((key) => [key, source?.[key] ?? null]));
-  return { before: before ? pick(before) : null, after: pick(after) };
-}
 
 function toDto(row: ShopSettings): SettingsDto {
   return {

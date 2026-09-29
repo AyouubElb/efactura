@@ -101,6 +101,14 @@ function fromPrisma(error: Prisma.PrismaClientKnownRequestError): ApiError {
       message: 'Cet élément est utilisé ailleurs',
     };
   }
+  // 22021: a character PostgreSQL can't store, like \u0000
+  if (pgCode === '22021') {
+    return {
+      statusCode: 400,
+      code: 'INVALID_TEXT',
+      message: 'Texte invalide : caractère non autorisé',
+    };
+  }
   if (pgCode === '23514') {
     return {
       statusCode: 409,

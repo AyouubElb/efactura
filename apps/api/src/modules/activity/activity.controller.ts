@@ -31,7 +31,7 @@ export class ActivityController {
 
   @Get('activity')
   @Roles('admin')
-  @ApiDataResponse(ActivityEntryDto, { isArray: true })
+  @ApiDataResponse(ActivityEntryDto, { paged: true })
   list(@Query() query: ActivityQueryDto) {
     return this.activity.list(query);
   }

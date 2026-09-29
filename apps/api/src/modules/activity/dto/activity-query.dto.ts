@@ -1,21 +1,8 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsUUID, Max, Min } from 'class-validator';
+import { IsOptional, IsUUID } from 'class-validator';
+import { PageQueryDto } from '../../../common/validation/list-query.dto.js';
 
-export class ActivityQueryDto {
-  @ApiPropertyOptional({ default: 1 })
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page: number = 1;
-
-  @ApiPropertyOptional({ default: 50 })
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  pageSize: number = 50;
-
+export class ActivityQueryDto extends PageQueryDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsUUID()

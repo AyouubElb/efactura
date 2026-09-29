@@ -90,7 +90,7 @@ async function main() {
   }
 }
 
-// Raw mode: the typed characters are never shown
+// Raw mode: each character shows as *, never in clear
 function askHidden(question: string): Promise<string> {
   return new Promise((resolve, reject) => {
     let value = '';
@@ -101,7 +101,11 @@ function askHidden(question: string): Promise<string> {
       stdout.write('\n');
     };
     const onData = (chunk: string) => {
-      for (const char of chunk) {
+      // Some terminals wrap a paste in invisible markers
+      const text = chunk
+        .replaceAll('\u001b[200~', '')
+        .replaceAll('\u001b[201~', '');
+      for (const char of text) {
         if (char === '\r' || char === '\n') {
           finish();
           resolve(value);
@@ -112,10 +116,15 @@ function askHidden(question: string): Promise<string> {
           reject(new Error('Cancelled.'));
           return;
         }
-        value =
-          char === '\u007f' || char === '\b'
-            ? value.slice(0, -1)
-            : value + char;
+        if (char === '\u007f' || char === '\b') {
+          if (value) {
+            value = value.slice(0, -1);
+            stdout.write('\b \b');
+          }
+        } else if (char >= ' ') {
+          value += char;
+          stdout.write('*');
+        }
       }
     };
     stdout.write(question);

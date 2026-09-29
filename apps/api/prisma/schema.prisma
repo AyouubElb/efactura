@@ -245,15 +245,16 @@ model Client {
 }
 
 model Supplier {
-  id        String   @id @default(uuid()) @db.Uuid
-  name      String
-  ice       String?  @unique @db.Char(15) // how the supplier is recognised
-  ifNumber  String?  @map("if_number")
-  address   String?
-  city      String?
-  phone     String?
-  email     String?
-  createdAt DateTime @default(now()) @map("created_at")
+  id         String    @id @default(uuid()) @db.Uuid
+  name       String
+  ice        String?   @unique @db.Char(15) // how the supplier is recognised
+  ifNumber   String?   @map("if_number")
+  address    String?
+  city       String?
+  phone      String?
+  email      String?
+  archivedAt DateTime? @map("archived_at") // the ICE stays unique even when archived
+  createdAt  DateTime  @default(now()) @map("created_at")
 
   savedNames  SupplierProductName[]
   purchases   PurchaseInvoice[]

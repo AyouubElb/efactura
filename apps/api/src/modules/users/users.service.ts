@@ -4,6 +4,7 @@ import { normalizeEmail } from '../../common/auth/email.js';
 import { PrismaService } from '../../common/prisma/prisma.service.js';
 import type { Prisma, Role } from '../../generated/prisma/client.js';
 import { ActivityService } from '../activity/activity.service.js';
+import { changes } from '../activity/changes.js';
 import { OneTimeTokensService } from '../auth/one-time-tokens.service.js';
 import { TokensService } from '../auth/tokens.service.js';
 import { EmailQueue } from '../email/email.queue.js';
@@ -86,7 +87,10 @@ export class UsersService {
           'user.invite_resent',
           { type: 'user', id: user.id },
           `a renvoyé l'invitation de ${user.fullName}${roleChange}`,
-          changes(existing, user),
+          changes(
+            { fullName: existing.fullName, role: existing.role },
+            { fullName: user.fullName, role: user.role },
+          ) ?? undefined,
         );
       } else {
         await this.activity.record(
@@ -194,22 +198,6 @@ function assertNotLastAdmin(activeAdmins: string[], id: string) {
       message: 'Il faut garder au moins un administrateur actif',
     });
   }
-}
-
-// The name and role a re-sent invitation changed, before and after
-function changes(
-  before: { fullName: string; role: Role },
-  after: { fullName: string; role: Role },
-) {
-  const keys = (['fullName', 'role'] as const).filter(
-    (key) => before[key] !== after[key],
-  );
-  if (keys.length === 0) {
-    return undefined;
-  }
-  const pick = (source: typeof before) =>
-    Object.fromEntries(keys.map((key) => [key, source[key]]));
-  return { before: pick(before), after: pick(after) };
 }
 
 function toDto({ oneTimeTokens, ...user }: UserRow): UserDto {
