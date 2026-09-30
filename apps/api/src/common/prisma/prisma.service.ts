@@ -12,6 +12,8 @@ export class PrismaService extends PrismaClient implements OnModuleDestroy {
       adapter: new PrismaPg({
         connectionString: config.get('DATABASE_URL', { infer: true }),
       }),
+      // Room for a PDF drawn meanwhile on Render's slow CPU; Prisma's default is 2 s and 5 s
+      transactionOptions: { maxWait: 10_000, timeout: 20_000 },
     });
   }
 

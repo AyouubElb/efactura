@@ -1,20 +1,8 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import {
-  ArrayMaxSize,
-  ArrayMinSize,
-  IsArray,
-  IsIn,
-  IsOptional,
-  IsString,
-  IsUUID,
-  Matches,
-  MaxLength,
-  ValidateNested,
-} from 'class-validator';
+import { IsIn, IsOptional, IsUUID, Matches } from 'class-validator';
 import { PageQueryDto } from '../../../common/validation/list-query.dto.js';
-import { Trim } from '../../../common/validation/trim.js';
 import {
+  InvoiceStatus,
   QuoteStatus,
   SendChannel,
 } from '../../../generated/prisma/client.js';
@@ -23,8 +11,8 @@ import {
   DeliveryDto,
   ShareLinkDto,
 } from '../../documents/dto/delivery.dto.js';
+import { DocumentDraftDto } from '../../documents/dto/document-draft.dto.js';
 import {
-  DocumentLineDto,
   DocumentLineViewDto,
   TvaRowDto,
 } from '../../documents/dto/document-line.dto.js';
@@ -33,30 +21,7 @@ import {
   ShopSnapshotDto,
 } from '../../documents/dto/snapshot.dto.js';
 
-export class CreateQuoteDto {
-  @ApiProperty()
-  @IsUUID()
-  clientId: string;
-
-  @ApiProperty({ type: [DocumentLineDto] })
-  @IsArray()
-  @ArrayMinSize(1)
-  @ArrayMaxSize(200)
-  @ValidateNested({ each: true })
-  // JSON arrives as plain objects: @Type makes each one a DocumentLineDto, so its rules run
-  @Type(() => DocumentLineDto)
-  lines: DocumentLineDto[];
-
-  @ApiPropertyOptional({
-    nullable: true,
-    example: 'Livraison sous 5 jours ouvrés après accord.',
-  })
-  @IsOptional()
-  @Trim()
-  @IsString()
-  @MaxLength(1000)
-  notes?: string | null;
-}
+export class CreateQuoteDto extends DocumentDraftDto {}
 
 // Lines, when sent, replace the whole list
 export class UpdateQuoteDto extends PartialType(CreateQuoteDto, {
@@ -119,6 +84,17 @@ class QuoteVersionRefDto {
 
   @ApiProperty({ enum: QuoteStatus })
   status: QuoteStatus;
+}
+
+class QuoteInvoiceRefDto {
+  @ApiProperty()
+  id: string;
+
+  @ApiProperty({ nullable: true, example: 'FA-2026-0016', description: 'Empty while a draft' })
+  number: string | null;
+
+  @ApiProperty({ enum: InvoiceStatus })
+  status: InvoiceStatus;
 }
 
 export class QuoteDto {
@@ -196,6 +172,9 @@ export class QuoteDetailDto extends QuoteDto {
 
   @ApiProperty({ type: QuoteVersionRefDto, nullable: true })
   nextVersion: QuoteVersionRefDto | null;
+
+  @ApiProperty({ type: QuoteInvoiceRefDto, nullable: true, description: 'The invoice made from this quote' })
+  invoice: QuoteInvoiceRefDto | null;
 
   @ApiProperty({ description: 'Sent: false while its PDF waits to be made' })
   pdfReady: boolean;

@@ -9,9 +9,11 @@ import {
 import { ActivityModule } from './modules/activity/activity.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { ClientsModule } from './modules/clients/clients.module.js';
+import { DashboardModule } from './modules/dashboard/dashboard.module.js';
 import { EmailWorkerModule } from './modules/email/email-worker.module.js';
 import { EmailModule } from './modules/email/email.module.js';
 import { HealthModule } from './modules/health/health.module.js';
+import { InvoicesModule } from './modules/invoices/invoices.module.js';
 import { ProductsModule } from './modules/products/products.module.js';
 import { QuotesModule } from './modules/quotes/quotes.module.js';
 import { SettingsModule } from './modules/settings/settings.module.js';
@@ -40,6 +42,8 @@ import { UsersModule } from './modules/users/users.module.js';
     ClientsModule,
     SuppliersModule,
     QuotesModule,
+    InvoicesModule,
+    DashboardModule,
     EmailWorkerModule,
     HealthModule,
   ],

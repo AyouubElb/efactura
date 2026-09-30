@@ -1,8 +1,10 @@
 import { formatDate, formatMoney } from '@efactura/shared';
 import {
   ConflictException,
+  HttpException,
   Injectable,
-  NotFoundException,
+  Logger,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import type { AuthUser } from '../../common/auth/auth-user.js';
 import { PrismaService } from '../../common/prisma/prisma.service.js';
@@ -27,13 +29,19 @@ interface Recipient {
   totalTtcCentimes: number;
   validUntil: string | null;
   dueDate: string | null;
+  // An avoir names the invoice it cancels
+  cancels: string | null;
   shop: ShopSnapshot;
   email: string | null;
   phone: string | null;
 }
 
+const CONTACT = { select: { email: true, phone: true } } as const;
+
 @Injectable()
 export class DeliveryService {
+  private readonly logger = new Logger(DeliveryService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly files: DocumentFilesService,
@@ -85,6 +93,28 @@ export class DeliveryService {
     }
   }
 
+  // Right after a number is given: the document stays numbered whatever fails now
+  async deliverAfterSend(
+    kind: DocumentType,
+    id: string,
+    channel: SendChannel,
+    user: AuthUser,
+    done: string,
+  ): Promise<DeliveryDto> {
+    try {
+      return await this.deliver(kind, id, channel, user);
+    } catch (error) {
+      if (error instanceof HttpException && error.getStatus() !== 500) {
+        throw error;
+      }
+      this.logger.error(`Delivery of ${kind} ${id} failed`, error);
+      throw new ServiceUnavailableException({
+        code: 'DELIVERY_FAILED',
+        message: `${done}, mais la livraison a échoué : utilisez « Renvoyer »`,
+      });
+    }
+  }
+
   // Built by the email worker when the email leaves, with the PDF attached
   async email(kind: DocumentType, id: string): Promise<Email> {
     const recipient = await this.recipient(kind, id);
@@ -113,7 +143,7 @@ export class DeliveryService {
       case 'quote': {
         const quote = await this.prisma.quote.findUniqueOrThrow({
           where: { id },
-          include: { client: { select: { email: true, phone: true } } },
+          include: { client: CONTACT },
         });
         const number = displayNumber(quote.number, quote.version);
         if (quote.status === 'draft' || !number) {
@@ -125,13 +155,50 @@ export class DeliveryService {
           totalTtcCentimes: quote.totalTtcCentimes,
           validUntil: isoDay(quote.validUntil),
           dueDate: null,
+          cancels: null,
           shop: quote.shopSnapshot as unknown as ShopSnapshot,
           email: quote.client.email,
           phone: quote.client.phone,
         };
       }
-      default:
-        throw new NotFoundException();
+      case 'invoice': {
+        const invoice = await this.prisma.invoice.findUniqueOrThrow({
+          where: { id },
+          include: { client: CONTACT },
+        });
+        if (invoice.status === 'draft' || !invoice.number) {
+          throw notSent();
+        }
+        return {
+          kind,
+          number: invoice.number,
+          totalTtcCentimes: invoice.totalTtcCentimes,
+          validUntil: null,
+          // "To pay by" only while it is still owed
+          dueDate: invoice.status === 'sent' ? isoDay(invoice.dueDate) : null,
+          cancels: null,
+          shop: invoice.shopSnapshot as unknown as ShopSnapshot,
+          email: invoice.client.email,
+          phone: invoice.client.phone,
+        };
+      }
+      case 'credit_note': {
+        const note = await this.prisma.creditNote.findUniqueOrThrow({
+          where: { id },
+          include: { invoice: { select: { number: true, client: CONTACT } } },
+        });
+        return {
+          kind,
+          number: note.number,
+          totalTtcCentimes: note.totalTtcCentimes,
+          validUntil: null,
+          dueDate: null,
+          cancels: note.invoice.number,
+          shop: note.shopSnapshot as unknown as ShopSnapshot,
+          email: note.invoice.client.email,
+          phone: note.invoice.client.phone,
+        };
+      }
     }
   }
 
@@ -141,11 +208,23 @@ export class DeliveryService {
         return (
           await this.prisma.quote.findUniqueOrThrow({
             where: { id },
-            select: { client: { select: { email: true, phone: true } } },
+            select: { client: CONTACT },
           })
         ).client;
-      default:
-        throw new NotFoundException();
+      case 'invoice':
+        return (
+          await this.prisma.invoice.findUniqueOrThrow({
+            where: { id },
+            select: { client: CONTACT },
+          })
+        ).client;
+      case 'credit_note':
+        return (
+          await this.prisma.creditNote.findUniqueOrThrow({
+            where: { id },
+            select: { invoice: { select: { client: CONTACT } } },
+          })
+        ).invoice.client;
     }
   }
 }
@@ -166,10 +245,14 @@ function amount(recipient: Recipient): string {
   return `${formatMoney(Math.abs(recipient.totalTtcCentimes))} DH`;
 }
 
+function cancels(recipient: Recipient): string {
+  return recipient.cancels ? `, qui annule la facture ${recipient.cancels}` : '';
+}
+
 function whatsappText(recipient: Recipient, link: string): string {
   return [
     'Bonjour,',
-    `Veuillez trouver ${YOUR[recipient.kind]} ${recipient.number} d’un montant de ${amount(recipient)} :`,
+    `Veuillez trouver ${YOUR[recipient.kind]} ${recipient.number} d’un montant de ${amount(recipient)}${cancels(recipient)} :`,
     link,
     `Cordialement, ${recipient.shop.legalName}`,
   ].join('\n');
@@ -182,7 +265,7 @@ function emailText(recipient: Recipient): string {
   const due = recipient.dueDate
     ? `, à régler au plus tard le ${formatDate(recipient.dueDate)}`
     : '';
-  return `Veuillez trouver ci-joint ${YOUR[recipient.kind]} ${recipient.number} d’un montant de ${amount(recipient)} TTC${until}${due}.`;
+  return `Veuillez trouver ci-joint ${YOUR[recipient.kind]} ${recipient.number} d’un montant de ${amount(recipient)} TTC${until}${due}${cancels(recipient)}.`;
 }
 
 function noEmail() {

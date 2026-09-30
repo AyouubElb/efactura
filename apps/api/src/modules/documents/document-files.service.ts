@@ -1,19 +1,22 @@
-import type { TvaBreakdownRow } from '@efactura/shared';
+import { todayInMorocco, type TvaBreakdownRow } from '@efactura/shared';
 import {
   ConflictException,
   Injectable,
   Logger,
-  NotFoundException,
+  StreamableFile,
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service.js';
 import type {
   Client,
   DocumentType,
+  Prisma,
   QuoteLine,
 } from '../../generated/prisma/client.js';
 import { SettingsService } from '../settings/settings.service.js';
 import { StorageService } from '../storage/storage.service.js';
-import { dayToDate, displayNumber, isoDay, pdfKey } from './numbers.js';
+import { minusBreakdown, minusLine } from './avoir.js';
+import { settingsMissing } from './drafts.js';
+import { displayNumber, isoDay, pdfKey } from './numbers.js';
 import { PdfService } from '../pdf/pdf.service.js';
 import type { Printable, PrintableLine } from '../pdf/printable.js';
 import {
@@ -47,6 +50,16 @@ export function ofDocument(kind: DocumentType, number: string): string {
   return `${of[kind]} ${number}`;
 }
 
+// A file, not JSON: the answer wrapper lets a StreamableFile through untouched
+export function pdfStream({ bytes, fileName }: PdfFile): StreamableFile {
+  return new StreamableFile(bytes, {
+    type: 'application/pdf',
+    disposition: `inline; filename="${fileName}"`,
+  });
+}
+
+const LINES = { orderBy: { position: 'asc' } } as const;
+
 @Injectable()
 export class DocumentFilesService {
   private readonly logger = new Logger(DocumentFilesService.name);
@@ -71,8 +84,25 @@ export class DocumentFilesService {
           pdfKey: quote.pdfKey,
         };
       }
-      default:
-        throw new NotFoundException();
+      case 'invoice': {
+        const invoice = await this.prisma.invoice.findUniqueOrThrow({
+          where: { id },
+          select: { status: true, number: true, pdfKey: true },
+        });
+        return {
+          draft: invoice.status === 'draft',
+          number: invoice.number,
+          pdfKey: invoice.pdfKey,
+        };
+      }
+      case 'credit_note': {
+        // An avoir is numbered and sent the moment it is created
+        const note = await this.prisma.creditNote.findUniqueOrThrow({
+          where: { id },
+          select: { number: true, pdfKey: true },
+        });
+        return { draft: false, number: note.number, pdfKey: note.pdfKey };
+      }
     }
   }
 
@@ -98,6 +128,17 @@ export class DocumentFilesService {
     return (await this.keep(kind, id)).key;
   }
 
+  // Right after the commit: a PDF that fails here is made at its first need
+  async ensureQuietly(kind: DocumentType, id: string): Promise<void> {
+    try {
+      await this.ensure(kind, id);
+    } catch (error) {
+      this.logger.warn(
+        `PDF of ${kind} ${id} not made yet: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
   private async keep(kind: DocumentType, id: string) {
     const state = await this.describe(kind, id);
     if (state.draft || !state.number) {
@@ -119,27 +160,31 @@ export class DocumentFilesService {
     return { key, fileName, bytes };
   }
 
-  // Set once, and only if the quote wasn't extended while its PDF was being made
+  // Plain SQL keeps updated_at; a quote extended while its PDF was made is skipped
   private async markKept(
     kind: DocumentType,
     id: string,
     key: string,
     validUntil: string | null,
   ) {
-    const data = { pdfKey: key };
     switch (kind) {
       case 'quote':
-        await this.prisma.quote.updateMany({
-          where: {
-            id,
-            pdfKey: null,
-            validUntil: validUntil ? dayToDate(validUntil) : null,
-          },
-          data,
+        await this.prisma.$executeRaw`
+          UPDATE quotes SET pdf_key = ${key}
+           WHERE id = ${id}::uuid AND pdf_key IS NULL
+             AND valid_until IS NOT DISTINCT FROM ${validUntil}::date`;
+        return;
+      case 'invoice':
+        await this.prisma.$executeRaw`
+          UPDATE invoices SET pdf_key = ${key}
+           WHERE id = ${id}::uuid AND pdf_key IS NULL`;
+        return;
+      case 'credit_note':
+        await this.prisma.creditNote.updateMany({
+          where: { id, pdfKey: null },
+          data: { pdfKey: key },
         });
         return;
-      default:
-        throw new NotFoundException();
     }
   }
 
@@ -148,15 +193,9 @@ export class DocumentFilesService {
       case 'quote': {
         const quote = await this.prisma.quote.findUniqueOrThrow({
           where: { id },
-          include: { client: true, lines: { orderBy: { position: 'asc' } } },
+          include: { client: true, lines: LINES },
         });
         const draft = quote.status === 'draft';
-        const copies = draft
-          ? await this.liveCopies(quote.client)
-          : {
-              shop: quote.shopSnapshot as unknown as ShopSnapshot,
-              client: quote.clientSnapshot as unknown as ClientSnapshot,
-            };
         return {
           kind,
           number: displayNumber(quote.number, quote.version),
@@ -166,19 +205,69 @@ export class DocumentFilesService {
           dueDate: null,
           cancelledInvoice: null,
           reason: null,
-          ...copies,
+          ...(draft ? await this.liveCopies(quote.client) : sentCopies(quote)),
           lines: quote.lines.map(printableLine),
           totalHtCentimes: quote.totalHtCentimes,
           totalTvaCentimes: quote.totalTvaCentimes,
           totalTtcCentimes: quote.totalTtcCentimes,
-          tvaBreakdown: (quote.tvaBreakdown ?? []) as unknown as TvaBreakdownRow[],
+          tvaBreakdown: breakdown(quote.tvaBreakdown),
           totalInWords: quote.totalInWords,
           notes: quote.notes,
           madeAt: quote.sentAt ?? new Date(),
         };
       }
-      default:
-        throw new NotFoundException();
+      case 'invoice': {
+        const invoice = await this.prisma.invoice.findUniqueOrThrow({
+          where: { id },
+          include: { client: true, lines: LINES },
+        });
+        const draft = invoice.status === 'draft';
+        return {
+          kind,
+          number: invoice.number,
+          draft,
+          issueDate: isoDay(invoice.issueDate),
+          validUntil: null,
+          dueDate: isoDay(invoice.dueDate),
+          cancelledInvoice: null,
+          reason: null,
+          ...(draft ? await this.liveCopies(invoice.client) : sentCopies(invoice)),
+          lines: invoice.lines.map(printableLine),
+          totalHtCentimes: invoice.totalHtCentimes,
+          totalTvaCentimes: invoice.totalTvaCentimes,
+          totalTtcCentimes: invoice.totalTtcCentimes,
+          tvaBreakdown: breakdown(invoice.tvaBreakdown),
+          totalInWords: invoice.totalInWords,
+          notes: invoice.notes,
+          madeAt: invoice.sentAt ?? new Date(),
+        };
+      }
+      case 'credit_note': {
+        const note = await this.prisma.creditNote.findUniqueOrThrow({
+          where: { id },
+          include: { invoice: { include: { lines: LINES } } },
+        });
+        // No lines of its own: the invoice it cancels, every amount negative
+        return {
+          kind,
+          number: note.number,
+          draft: false,
+          issueDate: todayInMorocco(note.createdAt),
+          validUntil: null,
+          dueDate: null,
+          cancelledInvoice: note.invoice.number,
+          reason: note.reason,
+          ...sentCopies(note),
+          lines: note.invoice.lines.map((line) => minusLine(printableLine(line))),
+          totalHtCentimes: note.totalHtCentimes,
+          totalTvaCentimes: note.totalTvaCentimes,
+          totalTtcCentimes: note.totalTtcCentimes,
+          tvaBreakdown: minusBreakdown(breakdown(note.invoice.tvaBreakdown)),
+          totalInWords: note.totalInWords,
+          notes: null,
+          madeAt: note.createdAt,
+        };
+      }
     }
   }
 
@@ -186,10 +275,7 @@ export class DocumentFilesService {
   private async liveCopies(client: Client) {
     const settings = await this.settings.current();
     if (!settings) {
-      throw new ConflictException({
-        code: 'SETTINGS_MISSING',
-        message: "Remplissez d'abord les paramètres de la boutique",
-      });
+      throw settingsMissing();
     }
     return { shop: shopSnapshot(settings), client: clientSnapshot(client) };
   }
@@ -207,6 +293,20 @@ export class DocumentFilesService {
       logoKey?.endsWith('.png') ? 'image/png' : 'image/jpeg',
     );
   }
+}
+
+function sentCopies(row: {
+  shopSnapshot: Prisma.JsonValue;
+  clientSnapshot: Prisma.JsonValue;
+}) {
+  return {
+    shop: row.shopSnapshot as unknown as ShopSnapshot,
+    client: row.clientSnapshot as unknown as ClientSnapshot,
+  };
+}
+
+function breakdown(value: Prisma.JsonValue): TvaBreakdownRow[] {
+  return (value ?? []) as unknown as TvaBreakdownRow[];
 }
 
 type LineRow = Pick<

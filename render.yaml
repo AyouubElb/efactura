@@ -51,7 +51,7 @@ services:
       # The Resend account's own address, while the test sender is used
       - key: EMAIL_REDIRECT_TO
         sync: false
-      # Cloudflare R2: https://<account id>.r2.cloudflarestorage.com
+      # Cloudflare R2, bucket in the EU jurisdiction: https://<account id>.eu.r2.cloudflarestorage.com
       - key: S3_ENDPOINT
         sync: false
       - key: S3_BUCKET

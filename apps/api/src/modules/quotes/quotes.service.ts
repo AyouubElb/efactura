@@ -1,18 +1,5 @@
-import {
-  addDays,
-  formatDate,
-  formatQuantity,
-  formatRate,
-  todayInMorocco,
-} from '@efactura/shared';
-import {
-  BadRequestException,
-  ConflictException,
-  HttpException,
-  Injectable,
-  Logger,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { addDays, formatDate, todayInMorocco } from '@efactura/shared';
+import { ConflictException, Injectable } from '@nestjs/common';
 import type { AuthUser } from '../../common/auth/auth-user.js';
 import { lockRow } from '../../common/prisma/lock-row.js';
 import { PrismaService } from '../../common/prisma/prisma.service.js';
@@ -20,7 +7,6 @@ import { Page } from '../../common/response/page.js';
 import {
   Prisma,
   type Quote,
-  type QuoteLine,
   type QuoteStatus,
   type SendChannel,
 } from '../../generated/prisma/client.js';
@@ -34,9 +20,20 @@ import {
 import {
   documentTotals,
   DocumentLinesService,
-  type DocumentTotals,
-  type PreparedLine,
 } from '../documents/document-lines.service.js';
+import {
+  activeClient,
+  assertRatesOffered,
+  CHANNEL_WORDS,
+  draftSummary,
+  invalid,
+  isDay,
+  json,
+  sameLines,
+  settingsMissing,
+  storedLine,
+  totalsData,
+} from '../documents/drafts.js';
 import type { TvaRowDto } from '../documents/dto/document-line.dto.js';
 import { dayToDate, displayNumber, isoDay } from '../documents/numbers.js';
 import { ShareLinksService } from '../documents/share-links.service.js';
@@ -57,12 +54,6 @@ import type {
   QuoteListQueryDto,
   UpdateQuoteDto,
 } from './dto/quotes.dto.js';
-
-const CHANNEL_WORDS: Record<SendChannel, string> = {
-  whatsapp: 'par WhatsApp',
-  email: 'par email',
-  download: '(PDF téléchargé)',
-};
 
 const CLOSED_WORDS: Record<QuoteStatus, string> = {
   draft: 'un brouillon',
@@ -86,6 +77,7 @@ const DETAIL = {
     lines: { orderBy: { position: 'asc' } },
     previousVersion: VERSION,
     nextVersion: VERSION,
+    invoice: { select: { id: true, number: true, status: true } },
     createdBy: { select: { id: true, fullName: true } },
     sentBy: { select: { id: true, fullName: true } },
   },
@@ -96,8 +88,6 @@ type VersionRow = Prisma.QuoteGetPayload<typeof VERSION>;
 
 @Injectable()
 export class QuotesService {
-  private readonly logger = new Logger(QuotesService.name);
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly activity: ActivityService,
@@ -155,6 +145,7 @@ export class QuotesService {
       shopSnapshot: row.shopSnapshot as unknown as ShopSnapshot | null,
       previousVersion: versionRef(row.previousVersion),
       nextVersion: versionRef(row.nextVersion),
+      invoice: row.invoice,
       pdfReady: row.pdfKey !== null,
       shareLink:
         row.status === 'draft'
@@ -167,7 +158,7 @@ export class QuotesService {
   }
 
   async create(dto: CreateQuoteDto, user: AuthUser): Promise<QuoteDetailDto> {
-    const client = await this.activeClient(dto.clientId);
+    const client = await activeClient(this.prisma, dto.clientId);
     const { lines, totals } = await this.lines.prepare(dto.lines);
     const id = await this.prisma.$transaction(async (tx) => {
       const quote = await tx.quote.create({
@@ -206,7 +197,7 @@ export class QuotesService {
       throw invalid('clientId', 'Une nouvelle version garde le client du devis');
     }
     const client = newClient
-      ? await this.activeClient(dto.clientId as string)
+      ? await activeClient(this.prisma, dto.clientId as string)
       : current.client;
     const prepared = dto.lines
       ? await this.lines.prepare(
@@ -251,8 +242,8 @@ export class QuotesService {
         { type: 'quote', id },
         `a modifié ${draftLabel(before, client.name)}`,
         changes(
-          summary(before.client.name, beforeLines.length, before.totalTtcCentimes, before.notes),
-          summary(client.name, afterLines.length, totalAfter, notes),
+          draftSummary(before.client.name, beforeLines.length, before.totalTtcCentimes, before.notes),
+          draftSummary(client.name, afterLines.length, totalAfter, notes),
         ) ?? undefined,
       );
     });
@@ -291,16 +282,13 @@ export class QuotesService {
   ): Promise<QuoteDeliveredDto> {
     const settings = await this.settings.current();
     if (!settings) {
-      throw new ConflictException({
-        code: 'SETTINGS_MISSING',
-        message: "Remplissez d'abord les paramètres de la boutique",
-      });
+      throw settingsMissing();
     }
     // Before any number is taken
     await this.delivery.assertCanDeliver('quote', id, channel);
     const today = todayInMorocco();
 
-    await this.prisma.$transaction(async (tx) => {
+    const sent = await this.prisma.$transaction(async (tx) => {
       await lockRow(tx, 'quotes', id);
       const quote = await tx.quote.findUniqueOrThrow({
         where: { id },
@@ -312,15 +300,7 @@ export class QuotesService {
           message: 'Ce devis est déjà envoyé : pour le transmettre à nouveau, utilisez « Renvoyer »',
         });
       }
-      const dropped = quote.lines.find(
-        (line) => !settings.tvaRatesBp.includes(line.tvaRateBp),
-      );
-      if (dropped) {
-        throw new ConflictException({
-          code: 'TVA_RATE_REMOVED',
-          message: `Le taux ${formatRate(dropped.tvaRateBp)} n'est plus proposé : modifiez la ligne ${dropped.position}`,
-        });
-      }
+      assertRatesOffered(quote.lines, settings.tvaRatesBp);
 
       const number = quote.previousVersionId
         ? await this.replacePrevious(tx, quote, user)
@@ -341,37 +321,26 @@ export class QuotesService {
           sentById: user.id,
         },
       });
+      const display = displayNumber(number, quote.version) as string;
       await this.activity.record(
         tx,
         user,
         'quote.sent',
         { type: 'quote', id },
-        `a envoyé le devis ${displayNumber(number, quote.version)} ${CHANNEL_WORDS[channel]}`,
+        `a envoyé le devis ${display} ${CHANNEL_WORDS[channel]}`,
       );
+      return display;
     });
 
-    await this.makePdf(id);
-    const delivery = await this.afterNumber(id, () =>
-      this.delivery.deliver('quote', id, channel, user),
+    await this.files.ensureQuietly('quote', id);
+    const delivery = await this.delivery.deliverAfterSend(
+      'quote',
+      id,
+      channel,
+      user,
+      `Devis ${sent} envoyé`,
     );
     return { quote: await this.get(id, user), delivery };
-  }
-
-  // The quote is numbered whatever fails now: the person is told to use "Renvoyer"
-  private async afterNumber<T>(id: string, step: () => Promise<T>): Promise<T> {
-    try {
-      return await step();
-    } catch (error) {
-      if (error instanceof HttpException && error.getStatus() !== 500) {
-        throw error;
-      }
-      this.logger.error(`Delivery of quote ${id} failed`, error);
-      const quote = await this.prisma.quote.findUniqueOrThrow({ where: { id } });
-      throw new ServiceUnavailableException({
-        code: 'DELIVERY_FAILED',
-        message: `Devis ${displayNumber(quote.number, quote.version)} envoyé, mais la livraison a échoué : utilisez « Renvoyer »`,
-      });
-    }
   }
 
   // Delivering again never touches the number
@@ -488,19 +457,8 @@ export class QuotesService {
         },
       );
     });
-    await this.makePdf(id);
+    await this.files.ensureQuietly('quote', id);
     return this.get(id, user);
-  }
-
-  // After the commit: a PDF that fails here is made at its first need
-  private async makePdf(id: string) {
-    try {
-      await this.files.ensure('quote', id);
-    } catch (error) {
-      this.logger.warn(
-        `PDF of quote ${id} not made yet: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
   }
 
   private async decide(
@@ -558,16 +516,6 @@ export class QuotesService {
     );
     return quote.number as string;
   }
-
-  private async activeClient(clientId: string) {
-    const client = await this.prisma.client.findUnique({
-      where: { id: clientId },
-    });
-    if (!client || client.archivedAt) {
-      throw invalid('clientId', client ? 'Client archivé' : 'Client introuvable');
-    }
-    return client;
-  }
 }
 
 function toDto(row: ListRow, today: Date): QuoteDto {
@@ -594,56 +542,10 @@ function toDto(row: ListRow, today: Date): QuoteDto {
   };
 }
 
-function storedLine(line: QuoteLine): PreparedLine {
-  return {
-    position: line.position,
-    productId: line.productId,
-    label: line.label,
-    reference: line.reference,
-    unit: line.unit,
-    quantity: line.quantity.toString(),
-    unitPriceHtCentimes: line.unitPriceHtCentimes,
-    tvaRateBp: line.tvaRateBp,
-    lineTotalHtCentimes: line.lineTotalHtCentimes,
-  };
-}
-
-function sameLines(before: PreparedLine[], after: PreparedLine[]): boolean {
-  const comparable = (lines: PreparedLine[]) =>
-    JSON.stringify(
-      lines.map((line) => ({ ...line, quantity: formatQuantity(line.quantity) })),
-    );
-  return comparable(before) === comparable(after);
-}
-
 function versionRef(row: VersionRow | null) {
   return row
     ? { id: row.id, number: displayNumber(row.number, row.version), status: row.status }
     : null;
-}
-
-function totalsData(totals: DocumentTotals) {
-  return {
-    totalHtCentimes: totals.totalHtCentimes,
-    totalTvaCentimes: totals.totalTvaCentimes,
-    totalTtcCentimes: totals.totalTtcCentimes,
-    tvaBreakdown: json(totals.tvaBreakdown),
-    totalInWords: totals.totalInWords,
-  };
-}
-
-function json(value: object): Prisma.InputJsonValue {
-  return value as unknown as Prisma.InputJsonValue;
-}
-
-// What the history keeps of a draft: who it is for, how many lines, how much
-function summary(
-  client: string,
-  lines: number,
-  totalTtcCentimes: number,
-  notes: string | null,
-) {
-  return { client, lines, totalTtcCentimes, notes };
 }
 
 function draftLabel(quote: Pick<Quote, 'number' | 'version'>, client: string) {
@@ -679,21 +581,4 @@ function notSentYet() {
     code: 'NOT_SENT',
     message: "Envoyez d'abord ce devis",
   });
-}
-
-function invalid(field: string, message: string) {
-  return new BadRequestException({
-    code: 'VALIDATION_FAILED',
-    message: 'Données invalides',
-    fields: { [field]: message },
-  });
-}
-
-function isDay(day: string): boolean {
-  try {
-    formatDate(day);
-    return true;
-  } catch {
-    return false;
-  }
 }

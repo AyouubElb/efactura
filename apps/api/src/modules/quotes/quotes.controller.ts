@@ -9,7 +9,6 @@ import {
   Patch,
   Post,
   Query,
-  StreamableFile,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -24,7 +23,10 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { AuthGuard } from '../../common/guards/auth.guard.js';
 import { InternalKeyGuard } from '../../common/guards/internal-key.guard.js';
 import { ApiDataResponse } from '../../common/response/api-data-response.decorator.js';
+import { pdfStream } from '../documents/document-files.service.js';
 import { SendDocumentDto } from '../documents/dto/delivery.dto.js';
+import { InvoiceDetailDto } from '../invoices/dto/invoices.dto.js';
+import { InvoicesService } from '../invoices/invoices.service.js';
 import {
   CreateQuoteDto,
   ExtendQuoteDto,
@@ -43,7 +45,10 @@ import { QuotesService } from './quotes.service.js';
 @Controller('quotes')
 @UseGuards(InternalKeyGuard, AuthGuard)
 export class QuotesController {
-  constructor(private readonly quotes: QuotesService) {}
+  constructor(
+    private readonly quotes: QuotesService,
+    private readonly invoices: InvoicesService,
+  ) {}
 
   @Get()
   @ApiDataResponse(QuoteDto, { paged: true })
@@ -82,18 +87,13 @@ export class QuotesController {
     return this.quotes.remove(id, user);
   }
 
-  // A file, not JSON: the answer wrapper lets a StreamableFile through untouched
   @Get(':id/pdf')
   @ApiProduces('application/pdf')
   @ApiOkResponse({
     description: 'A draft: made now, marked BROUILLON. Sent: the kept file',
   })
   async pdf(@Param('id', ParseUUIDPipe) id: string) {
-    const { bytes, fileName } = await this.quotes.pdf(id);
-    return new StreamableFile(bytes, {
-      type: 'application/pdf',
-      disposition: `inline; filename="${fileName}"`,
-    });
+    return pdfStream(await this.quotes.pdf(id));
   }
 
   @Post(':id/send')
@@ -156,5 +156,15 @@ export class QuotesController {
     @CurrentUser() user: AuthUser,
   ) {
     return this.quotes.extend(id, dto, user);
+  }
+
+  // "Convertir en facture": an invoice draft; the invoices module owns it
+  @Post(':id/convert')
+  @ApiDataResponse(InvoiceDetailDto, { status: 201 })
+  convert(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.invoices.fromQuote(id, user);
   }
 }
