@@ -1,9 +1,9 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Global, Module } from '@nestjs/common';
-import { EmailProcessor } from './email.processor.js';
 import { EMAIL_QUEUE, EmailQueue } from './email.queue.js';
 import { EmailService } from './email.service.js';
 
+// The sender and the queue: every module may use them, and they use no module back
 @Global()
 @Module({
   imports: [
@@ -18,7 +18,7 @@ import { EmailService } from './email.service.js';
       },
     }),
   ],
-  providers: [EmailService, EmailQueue, EmailProcessor],
-  exports: [EmailQueue],
+  providers: [EmailService, EmailQueue],
+  exports: [EmailService, EmailQueue],
 })
 export class EmailModule {}

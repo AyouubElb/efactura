@@ -28,6 +28,13 @@ export function addDays(date: string, days: number): string {
   return new Date(parseDay(date) + days * DAY_IN_MS).toISOString().slice(0, 10);
 }
 
+// "2026-09-03" → "03/09/2026", as printed on documents
+export function formatDate(date: string): string {
+  parseDay(date);
+  const [year, month, day] = date.split('-');
+  return `${day}/${month}/${year}`;
+}
+
 function parseDay(date: string): number {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
   const time = match

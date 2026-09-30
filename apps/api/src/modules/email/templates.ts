@@ -24,6 +24,38 @@ export function passwordResetEmail(fullName: string, link: string): Content {
   });
 }
 
+export interface DocumentEmail {
+  subject: string;
+  body: string;
+  shopName: string;
+  shopPhone: string | null;
+}
+
+// The PDF is attached: the email only says what it is
+export function documentEmail(email: DocumentEmail): Content {
+  const signature = [email.shopName, email.shopPhone].filter(
+    (part): part is string => Boolean(part),
+  );
+  const text = [
+    'Bonjour,',
+    email.body,
+    `Cordialement,\n${signature.join('\n')}`,
+  ].join('\n\n');
+
+  const html = `<!doctype html>
+<html lang="fr">
+<body style="margin:0;padding:24px;background:#f5f5f4;font-family:Arial,sans-serif;color:#1c1917">
+  <div style="max-width:520px;margin:0 auto;background:#fff;border-radius:8px;padding:32px">
+    <p>Bonjour,</p>
+    <p>${escape(email.body)}</p>
+    <p>Cordialement,<br>${signature.map(escape).join('<br>')}</p>
+  </div>
+</body>
+</html>`;
+
+  return { subject: email.subject, text, html };
+}
+
 interface LinkEmail {
   subject: string;
   greeting: string;

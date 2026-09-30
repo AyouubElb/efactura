@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { InjectQueue } from '@nestjs/bullmq';
 import {
   Injectable,
@@ -6,15 +7,25 @@ import {
 } from '@nestjs/common';
 import type { Queue } from 'bullmq';
 import { PrismaService } from '../../common/prisma/prisma.service.js';
+import type { DocumentType } from '../../generated/prisma/client.js';
 import { ActivityService } from '../activity/activity.service.js';
 import { ONE_TIME_LINK } from './one-time-link.js';
 
 export const EMAIL_QUEUE = 'email';
 export const ONE_TIME_LINK_JOB = 'one-time-link';
+export const DOCUMENT_JOB = 'document';
 
 export interface OneTimeLinkJob {
   tokenId: string;
 }
+
+// Only the document's type and id: the address is read when the email leaves
+export interface DocumentJob {
+  type: DocumentType;
+  id: string;
+}
+
+export type EmailJob = OneTimeLinkJob | DocumentJob;
 
 const ADD_TIMEOUT_MS = 5_000;
 const REDIS_LOG_QUIET_MS = 60_000;
@@ -22,9 +33,11 @@ const REDIS_LOG_QUIET_MS = 60_000;
 @Injectable()
 export class EmailQueue {
   private readonly logger = new Logger(EmailQueue.name);
+  // Jobs reported as failed to the person: the worker, in this same process, drops them
+  private readonly abandoned = new Set<string>();
 
   constructor(
-    @InjectQueue(EMAIL_QUEUE) private readonly queue: Queue<OneTimeLinkJob>,
+    @InjectQueue(EMAIL_QUEUE) private readonly queue: Queue<EmailJob>,
     private readonly prisma: PrismaService,
     private readonly activity: ActivityService,
   ) {
@@ -47,6 +60,29 @@ export class EmailQueue {
     }
   }
 
+  // Every click is one email: "Renvoyer" sends it again on purpose
+  async sendDocument(type: DocumentType, id: string): Promise<void> {
+    const jobId = randomUUID();
+    try {
+      await withTimeout(
+        this.queue.add(DOCUMENT_JOB, { type, id }, { jobId }),
+        ADD_TIMEOUT_MS,
+      );
+    } catch (error) {
+      // The request still waits in memory and reaches Redis once it is back
+      this.abandoned.add(jobId);
+      await this.recordDocumentFailure({ type, id }, error, 0);
+      throw new ServiceUnavailableException({
+        code: 'EMAIL_NOT_QUEUED',
+        message: "Document envoyé, mais l'email n'a pas pu partir : utilisez « Renvoyer »",
+      });
+    }
+  }
+
+  wasAbandoned(jobId: string | undefined): boolean {
+    return jobId !== undefined && this.abandoned.delete(jobId);
+  }
+
   // Final: a job that still reaches Redis later finds the token failed and sends nothing
   async recordFailure(tokenId: string, error: unknown, attempts: number) {
     const reason = error instanceof Error ? error.message : String(error);
@@ -67,6 +103,28 @@ export class EmailQueue {
           { error: reason, attempts },
         );
       });
+    } catch (recordError) {
+      this.logger.error('Could not record the failed email', recordError);
+    }
+  }
+
+  // The document stays sent: its history says the email didn't leave
+  async recordDocumentFailure(
+    job: DocumentJob,
+    error: unknown,
+    attempts: number,
+  ) {
+    const reason = error instanceof Error ? error.message : String(error);
+    this.logger.error(`Email for ${job.type} ${job.id} not sent: ${reason}`);
+    try {
+      await this.activity.record(
+        this.prisma,
+        null,
+        'email.failed',
+        { type: job.type, id: job.id },
+        "email non envoyé : utilisez « Renvoyer »",
+        { error: reason, attempts },
+      );
     } catch (recordError) {
       this.logger.error('Could not record the failed email', recordError);
     }

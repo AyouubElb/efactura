@@ -8,6 +8,9 @@ export interface Email {
   subject: string;
   text: string;
   html: string;
+  // The shop's own address: a client's answer reaches the shop, not no-reply
+  replyTo?: string;
+  attachments?: { filename: string; content: Buffer; contentType: string }[];
 }
 
 // The only file that talks to the SMTP server
@@ -39,6 +42,8 @@ export class EmailService implements OnModuleDestroy {
       subject,
       text: email.text,
       html: email.html,
+      replyTo: email.replyTo,
+      attachments: email.attachments,
     });
   }
 

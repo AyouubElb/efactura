@@ -51,3 +51,13 @@ services:
       # The Resend account's own address, while the test sender is used
       - key: EMAIL_REDIRECT_TO
         sync: false
+      # Cloudflare R2: https://<account id>.r2.cloudflarestorage.com
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_BUCKET
+        value: efactura
+      # An R2 token limited to that bucket, object read and write
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false

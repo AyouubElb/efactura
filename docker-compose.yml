@@ -35,5 +35,16 @@ services:
       - "1025:1025" # SMTP — the API sends here
       - "8025:8025" # the inbox, in the browser: http://localhost:8025
 
+  s3proxy: # replaces Cloudflare R2 — speaks S3 and keeps the files in a volume
+    image: andrewgaul/s3proxy
+    environment:
+      S3PROXY_IDENTITY: local # S3_ACCESS_KEY_ID in .env
+      S3PROXY_CREDENTIAL: local-secret # S3_SECRET_ACCESS_KEY in .env
+    ports:
+      - "8080:80"
+    volumes:
+      - storage-data:/data # one folder per bucket, one file per key
+
 volumes:
   postgres-data:
+  storage-data:

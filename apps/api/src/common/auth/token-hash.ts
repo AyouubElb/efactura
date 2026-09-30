@@ -11,3 +11,10 @@ export function linkToken(secret: string, tokenId: string): string {
     .update(`one-time-link:${tokenId}`)
     .digest('base64url');
 }
+
+// A share link too: the document page can show it again
+export function shareToken(secret: string, linkId: string): string {
+  return createHmac('sha256', secret)
+    .update(`share-link:${linkId}`)
+    .digest('base64url');
+}

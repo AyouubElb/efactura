@@ -144,6 +144,9 @@ export class SettingsDto {
   @ApiProperty({ example: [2000, 1000, 0] })
   tvaRatesBp: number[];
 
+  @ApiProperty({ nullable: true, description: 'Five minutes to show the logo' })
+  logoUrl: string | null;
+
   @ApiProperty({ nullable: true })
   updatedAt: Date | null;
 }

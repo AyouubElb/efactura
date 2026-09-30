@@ -45,6 +45,25 @@ export class NumberingService {
     private readonly activity: ActivityService,
   ) {}
 
+  // The only place a number is given; the UPDATE holds the counter until the send commits
+  async next(
+    tx: Prisma.TransactionClient,
+    series: Series,
+    year: number,
+  ): Promise<string> {
+    await tx.$executeRaw`
+      INSERT INTO number_counters (series, year)
+      VALUES (${series}::series, ${year})
+      ON CONFLICT DO NOTHING`;
+    const [{ last_number: taken }] = await tx.$queryRaw<
+      { last_number: number }[]
+    >`
+      UPDATE number_counters SET last_number = last_number + 1
+       WHERE series = ${series}::series AND year = ${year}
+      RETURNING last_number`;
+    return documentNumber(series, year, taken);
+  }
+
   async list(year = yearInMorocco()): Promise<SeriesCounterDto[]> {
     const rows = await this.prisma.numberCounter.findMany({ where: { year } });
     return Object.values(Series).map((series) => {

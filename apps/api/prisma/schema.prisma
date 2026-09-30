@@ -362,6 +362,7 @@ model PurchaseLine {
   tvaRateBp              Int             @map("tva_rate_bp")
   previousCostHtCentimes Int?            @map("previous_cost_ht_centimes") // the cost before this purchase
 
+  @@index([purchaseId])
   @@index([productId])
   @@map("purchase_lines")
 }
@@ -424,6 +425,7 @@ model QuoteLine {
   tvaRateBp           Int      @map("tva_rate_bp")
   lineTotalHtCentimes Int      @map("line_total_ht_centimes")
 
+  @@index([quoteId])
   @@map("quote_lines")
 }
 
@@ -484,6 +486,7 @@ model InvoiceLine {
   tvaRateBp           Int      @map("tva_rate_bp")
   lineTotalHtCentimes Int      @map("line_total_ht_centimes")
 
+  @@index([invoiceId])
   @@map("invoice_lines")
 }
 

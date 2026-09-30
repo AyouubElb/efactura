@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Put, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Post,
+  Put,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import type { AuthUser } from '../../common/auth/auth-user.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
@@ -7,6 +16,11 @@ import { AuthGuard } from '../../common/guards/auth.guard.js';
 import { InternalKeyGuard } from '../../common/guards/internal-key.guard.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { ApiDataResponse } from '../../common/response/api-data-response.decorator.js';
+import {
+  LogoUploadDto,
+  LogoUploadRequestDto,
+  SetLogoDto,
+} from './dto/logo.dto.js';
 import {
   NumberingQueryDto,
   SeriesCounterDto,
@@ -39,6 +53,22 @@ export class SettingsController {
   @ApiDataResponse(SettingsDto)
   update(@Body() dto: UpdateSettingsDto, @CurrentUser() admin: AuthUser) {
     return this.settings.update(dto, admin);
+  }
+
+  // The browser sends the file straight to storage, then calls PUT /settings/logo
+  @Post('logo-upload-url')
+  @Roles('admin')
+  @HttpCode(200)
+  @ApiDataResponse(LogoUploadDto)
+  logoUploadLink(@Body() dto: LogoUploadRequestDto) {
+    return this.settings.logoUploadLink(dto);
+  }
+
+  @Put('logo')
+  @Roles('admin')
+  @ApiDataResponse(SettingsDto)
+  setLogo(@Body() dto: SetLogoDto, @CurrentUser() admin: AuthUser) {
+    return this.settings.setLogo(dto, admin);
   }
 
   @Get('numbering')

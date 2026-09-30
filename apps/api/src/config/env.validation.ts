@@ -3,6 +3,7 @@ import {
   IsEmail,
   IsEnum,
   IsInt,
+  IsNotEmpty,
   IsOptional,
   IsString,
   IsUrl,
@@ -71,6 +72,23 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsEmail()
   EMAIL_REDIRECT_TO?: string;
+
+  // File storage: S3Proxy on the PC, Cloudflare R2 in production
+  @IsUrl({ require_tld: false, require_protocol: true })
+  S3_ENDPOINT: string;
+
+  @Matches(/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/, {
+    message: 'S3_BUCKET must be a bucket name: lowercase letters, digits, dots, dashes',
+  })
+  S3_BUCKET: string;
+
+  @IsString()
+  @IsNotEmpty()
+  S3_ACCESS_KEY_ID: string;
+
+  @IsString()
+  @IsNotEmpty()
+  S3_SECRET_ACCESS_KEY: string;
 }
 
 // Runs once at startup: a missing or wrong setting stops the API with a clear message

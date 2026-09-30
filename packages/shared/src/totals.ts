@@ -1,5 +1,11 @@
 import { assertCentimes, MAX_CENTIMES } from './money.js';
 
+// "10", "2.5": a dot and up to 3 decimals, never a float
+export const QUANTITY_PATTERN = /^\d{1,9}(?:\.\d{1,3})?$/;
+
+// A document line's quantity: the same format, above 0
+export const LINE_QUANTITY_PATTERN = /^(?!0+(?:\.0+)?$)\d{1,9}(?:\.\d{1,3})?$/;
+
 export interface LineInput {
   quantity: string; // "10", "2.5"
   unitPriceHtCentimes: number;
@@ -80,13 +86,31 @@ export function computeTotals(lines: LineInput[]): DocumentTotals {
   };
 }
 
+// "2.500" → "2,5", as printed on documents
+export function formatQuantity(quantity: string): string {
+  const thousandths = parseQuantity(quantity);
+  const whole = (thousandths / 1000n).toString();
+  const decimals = (thousandths % 1000n)
+    .toString()
+    .padStart(3, '0')
+    .replace(/0+$/, '');
+  return decimals ? `${whole},${decimals}` : whole;
+}
+
+// 2000 → "20 %", 550 → "5,5 %"; a no-break space keeps the sign on the line
+export function formatRate(rateBp: number): string {
+  assertRate(rateBp);
+  const whole = Math.floor(rateBp / 100);
+  const decimals = (rateBp % 100).toString().padStart(2, '0').replace(/0+$/, '');
+  return `${decimals ? `${whole},${decimals}` : whole} %`;
+}
+
 // "2.5" → 2500 thousandths
 function parseQuantity(quantity: string): bigint {
-  const match = /^(\d{1,9})(?:\.(\d{1,3}))?$/.exec(quantity);
-  if (!match) {
+  if (!QUANTITY_PATTERN.test(quantity)) {
     throw new RangeError(`Not a quantity: "${quantity}"`);
   }
-  const [, whole, decimals = ''] = match;
+  const [whole, decimals = ''] = quantity.split('.');
   return BigInt(whole) * 1000n + BigInt(decimals.padEnd(3, '0'));
 }
 
