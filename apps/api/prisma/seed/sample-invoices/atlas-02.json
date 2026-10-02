@@ -1,0 +1,61 @@
+{
+  "document_type": "invoice",
+  "supplier": {
+    "name": "Atlas Distribution SARL",
+    "ice": "001234567000089",
+    "if_number": "40112233",
+    "address": "45, rue Ibnou Mounir, zone industrielle, Casablanca"
+  },
+  "invoice_number": "FAC-26-04598",
+  "invoice_date": "2026-09-30",
+  "prices_include_tax": false,
+  "lines": [
+    {
+      "label": "SAMSUNG GALAXY A55 5G 128GB NAVY",
+      "reference": "SM-A556B",
+      "quantity": "3",
+      "unit_price": "3250.00",
+      "tva_rate": "20",
+      "line_total": "9750.00"
+    },
+    {
+      "label": "SAMSUNG GALAXY A15 128GB BLACK",
+      "reference": "SM-A155F",
+      "quantity": "6",
+      "unit_price": "1190.00",
+      "tva_rate": "20",
+      "line_total": "7140.00"
+    },
+    {
+      "label": "CANON PIXMA G3470 MULTIFONCTION WIFI",
+      "reference": "G3470",
+      "quantity": "1",
+      "unit_price": "1390.00",
+      "tva_rate": "20",
+      "line_total": "1390.00"
+    },
+    {
+      "label": "LOGITECH M185 SOURIS SANS FIL GRIS",
+      "reference": "910-002238",
+      "quantity": "10",
+      "unit_price": "85.00",
+      "tva_rate": "20",
+      "line_total": "850.00"
+    },
+    {
+      "label": "SAMSUNG CHARGEUR RAPIDE 25W USB-C",
+      "reference": "EP-TA800NBEGEU",
+      "quantity": "10",
+      "unit_price": "95.00",
+      "tva_rate": "20",
+      "line_total": "950.00"
+    }
+  ],
+  "totals": {
+    "ht": "20080.00",
+    "tva": "4016.00",
+    "ttc": "24096.00"
+  },
+  "readability": "good",
+  "notes": []
+}

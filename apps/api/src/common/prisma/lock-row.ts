@@ -6,6 +6,7 @@ type Table =
   | 'suppliers'
   | 'quotes'
   | 'invoices'
+  | 'purchase_invoices'
   | 'share_links';
 
 // A second edit of the same row waits here, then reads what the first one saved

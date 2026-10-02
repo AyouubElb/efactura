@@ -1,0 +1,229 @@
+{
+  "document_type": "invoice",
+  "supplier": {
+    "name": "Atlas Distribution SARL",
+    "ice": "001234567000089",
+    "if_number": "40112233",
+    "address": "45, rue Ibnou Mounir, zone industrielle, Casablanca"
+  },
+  "invoice_number": "FAC-26-04377",
+  "invoice_date": "2026-09-11",
+  "prices_include_tax": false,
+  "lines": [
+    {
+      "label": "SAMSUNG GALAXY A55 5G 128GB NAVY",
+      "reference": "SM-A556B",
+      "quantity": "4",
+      "unit_price": "3250.00",
+      "tva_rate": "20",
+      "line_total": "13000.00"
+    },
+    {
+      "label": "SAMSUNG GALAXY A55 5G 128GB LILAS",
+      "reference": "SM-A556B-L",
+      "quantity": "2",
+      "unit_price": "3250.00",
+      "tva_rate": "20",
+      "line_total": "6500.00"
+    },
+    {
+      "label": "SAMSUNG GALAXY A15 128GB BLACK",
+      "reference": "SM-A155F",
+      "quantity": "8",
+      "unit_price": "1190.00",
+      "tva_rate": "20",
+      "line_total": "9520.00"
+    },
+    {
+      "label": "SAMSUNG GALAXY A15 128GB BLUE",
+      "reference": "SM-A155F-B",
+      "quantity": "4",
+      "unit_price": "1190.00",
+      "tva_rate": "20",
+      "line_total": "4760.00"
+    },
+    {
+      "label": "APPLE IPHONE 15 128GB BLACK",
+      "reference": "MTP03",
+      "quantity": "2",
+      "unit_price": "7350.00",
+      "tva_rate": "20",
+      "line_total": "14700.00"
+    },
+    {
+      "label": "APPLE IPHONE 15 128GB PINK",
+      "reference": "MTP13",
+      "quantity": "1",
+      "unit_price": "7350.00",
+      "tva_rate": "20",
+      "line_total": "7350.00"
+    },
+    {
+      "label": "HP 250 G10 I5-1335U 8GB 512GB SSD W11",
+      "reference": "8A5D4EA",
+      "quantity": "4",
+      "unit_price": "5350.00",
+      "tva_rate": "20",
+      "line_total": "21400.00"
+    },
+    {
+      "label": "DELL VOSTRO 3520 I5-1235U 8GB 512GB",
+      "reference": "V3520-I5",
+      "quantity": "2",
+      "unit_price": "5900.00",
+      "tva_rate": "20",
+      "line_total": "11800.00"
+    },
+    {
+      "label": "HP LASERJET M111W WIFI",
+      "reference": "M111W",
+      "quantity": "3",
+      "unit_price": "1050.00",
+      "tva_rate": "20",
+      "line_total": "3150.00"
+    },
+    {
+      "label": "CANON PIXMA G3470 MULTIFONCTION WIFI",
+      "reference": "G3470",
+      "quantity": "3",
+      "unit_price": "1390.00",
+      "tva_rate": "20",
+      "line_total": "4170.00"
+    },
+    {
+      "label": "ECRAN SAMSUNG 24\" LS24C310 IPS 75HZ",
+      "reference": "LS24C310",
+      "quantity": "5",
+      "unit_price": "1050.00",
+      "tva_rate": "20",
+      "line_total": "5250.00"
+    },
+    {
+      "label": "LOGITECH M185 SOURIS SANS FIL GRIS",
+      "reference": "910-002238",
+      "quantity": "20",
+      "unit_price": "85.00",
+      "tva_rate": "20",
+      "line_total": "1700.00"
+    },
+    {
+      "label": "LOGITECH MK270 COMBO CLAVIER SOURIS AZERTY",
+      "reference": "920-004511",
+      "quantity": "10",
+      "unit_price": "215.00",
+      "tva_rate": "20",
+      "line_total": "2150.00"
+    },
+    {
+      "label": "CABLE HDMI 2.0 1.5M",
+      "reference": "HDMI-15",
+      "quantity": "30",
+      "unit_price": "18.00",
+      "tva_rate": "20",
+      "line_total": "540.00"
+    },
+    {
+      "label": "CABLE HDMI 2.0 3M",
+      "reference": "HDMI-30",
+      "quantity": "15",
+      "unit_price": "26.00",
+      "tva_rate": "20",
+      "line_total": "390.00"
+    },
+    {
+      "label": "CABLE USB-C VERS USB-C 1M 60W",
+      "reference": "USBC-1M",
+      "quantity": "25",
+      "unit_price": "22.00",
+      "tva_rate": "20",
+      "line_total": "550.00"
+    },
+    {
+      "label": "SAMSUNG CHARGEUR RAPIDE 25W USB-C",
+      "reference": "EP-TA800NBEGEU",
+      "quantity": "15",
+      "unit_price": "95.00",
+      "tva_rate": "20",
+      "line_total": "1425.00"
+    },
+    {
+      "label": "POWERBANK XIAOMI 10000MAH 22.5W",
+      "reference": "BHR5884GL",
+      "quantity": "6",
+      "unit_price": "165.00",
+      "tva_rate": "20",
+      "line_total": "990.00"
+    },
+    {
+      "label": "ECOUTEURS SAMSUNG GALAXY BUDS FE GRAPHITE",
+      "reference": "SM-R400N",
+      "quantity": "4",
+      "unit_price": "690.00",
+      "tva_rate": "20",
+      "line_total": "2760.00"
+    },
+    {
+      "label": "TAPIS DE SOURIS ERGONOMIQUE GEL",
+      "reference": "TS-GEL",
+      "quantity": "12",
+      "unit_price": "35.00",
+      "tva_rate": "20",
+      "line_total": "420.00"
+    },
+    {
+      "label": "WEBCAM LOGITECH C270 HD 720P",
+      "reference": "960-001063",
+      "quantity": "3",
+      "unit_price": "245.00",
+      "tva_rate": "20",
+      "line_total": "735.00"
+    },
+    {
+      "label": "CASQUE LOGITECH H390 USB",
+      "reference": "981-000406",
+      "quantity": "3",
+      "unit_price": "310.00",
+      "tva_rate": "20",
+      "line_total": "930.00"
+    },
+    {
+      "label": "CLAVIER LOGITECH K120 USB AZERTY",
+      "reference": "920-002488",
+      "quantity": "6",
+      "unit_price": "99.00",
+      "tva_rate": "20",
+      "line_total": "594.00"
+    },
+    {
+      "label": "HUB USB 3.0 4 PORTS",
+      "reference": "HUB-4P",
+      "quantity": "8",
+      "unit_price": "58.00",
+      "tva_rate": "20",
+      "line_total": "464.00"
+    },
+    {
+      "label": "MULTIPRISE PARAFOUDRE 6 PRISES 2M",
+      "reference": "MP-6P",
+      "quantity": "5",
+      "unit_price": "120.00",
+      "tva_rate": "20",
+      "line_total": "600.00"
+    },
+    {
+      "label": "ROUTEUR TP-LINK ARCHER C6 AC1200",
+      "reference": "ARCHER-C6",
+      "quantity": "2",
+      "unit_price": "340.00",
+      "tva_rate": "20",
+      "line_total": "680.00"
+    }
+  ],
+  "totals": {
+    "ht": "116528.00",
+    "tva": "23305.60",
+    "ttc": "139833.60"
+  },
+  "readability": "good",
+  "notes": []
+}

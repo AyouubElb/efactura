@@ -1,0 +1,53 @@
+{
+  "document_type": "invoice",
+  "supplier": {
+    "name": "Maghreb IT Supply",
+    "ice": "002345678000012",
+    "if_number": "40445566",
+    "address": "12, avenue Hassan II, Rabat"
+  },
+  "invoice_number": "MIS/2026/1203",
+  "invoice_date": "2026-09-26",
+  "prices_include_tax": false,
+  "lines": [
+    {
+      "label": "Clé USB Kingston DataTraveler Exodia 32Go (carton de 10)",
+      "reference": "DTX/32GB-10",
+      "quantity": "3",
+      "unit_price": "280.00",
+      "tva_rate": "20",
+      "line_total": "840.00"
+    },
+    {
+      "label": "Epson EcoTank L3250 A4 WiFi",
+      "reference": "C11CJ67405",
+      "quantity": "2",
+      "unit_price": "1480.00",
+      "tva_rate": "20",
+      "line_total": "2960.00"
+    },
+    {
+      "label": "Câble réseau RJ45 Cat6 UTP (au mètre)",
+      "reference": "CAT6-UTP",
+      "quantity": "30.5",
+      "unit_price": "4.20",
+      "tva_rate": "20",
+      "line_total": "128.10"
+    },
+    {
+      "label": "ASUS VivoBook 15 X1504ZA i7-1255U 16Go 512Go",
+      "reference": "X1504ZA-NJ1086",
+      "quantity": "1",
+      "unit_price": "7150.00",
+      "tva_rate": "20",
+      "line_total": "7150.00"
+    }
+  ],
+  "totals": {
+    "ht": "11078.10",
+    "tva": "2215.62",
+    "ttc": "13293.72"
+  },
+  "readability": "good",
+  "notes": []
+}

@@ -1,0 +1,78 @@
+{
+  "file": "maghreb-01.pdf",
+  "sha256": "66859483b4354bf824d18257f92547b48a961443272778318c1bf4a797ef9e7c",
+  "ms": 15767,
+  "answer": {
+    "document_type": "invoice",
+    "supplier": {
+      "name": "MAGHREB IT SUPPLY",
+      "ice": "002345678000012",
+      "if_number": "40445566",
+      "address": "12, avenue Hassan II, Rabat"
+    },
+    "invoice_number": "MIS/2026/1187",
+    "invoice_date": "2026-09-19",
+    "prices_include_tax": false,
+    "lines": [
+      {
+        "label": "Xiaomi Redmi Note 13 8+256Go Midnight Black",
+        "reference": "RN13-256",
+        "quantity": "4",
+        "unit_price": "1690.00",
+        "tva_rate": "20",
+        "line_total": "6760.00"
+      },
+      {
+        "label": "Lenovo IdeaPad Slim 3 15IAN8 i3-N305 8Go 256Go",
+        "reference": "82XB0045FE",
+        "quantity": "2",
+        "unit_price": "4100.00",
+        "tva_rate": "20",
+        "line_total": "8200.00"
+      },
+      {
+        "label": "Clé USB SanDisk Ultra Flair 64Go USB 3.0",
+        "reference": "SDCZ73-064G",
+        "quantity": "25",
+        "unit_price": "45.00",
+        "tva_rate": "20",
+        "line_total": "1125.00"
+      },
+      {
+        "label": "Coque silicone Galaxy A55 transparente",
+        "reference": "CQ-A55-TR",
+        "quantity": "20",
+        "unit_price": "32.00",
+        "tva_rate": "20",
+        "line_total": "640.00"
+      },
+      {
+        "label": "Frais de livraison Casablanca",
+        "reference": null,
+        "quantity": "1",
+        "unit_price": "150.00",
+        "tva_rate": "20",
+        "line_total": "150.00"
+      },
+      {
+        "label": "Remise commerciale 2%",
+        "reference": null,
+        "quantity": null,
+        "unit_price": null,
+        "tva_rate": "20",
+        "line_total": "-334.50"
+      }
+    ],
+    "totals": {
+      "ht": "16540.50",
+      "tva": "3308.10",
+      "ttc": "19848.60"
+    },
+    "readability": "good",
+    "notes": []
+  },
+  "model": "gpt-6.1-sol",
+  "inputTokens": 3654,
+  "outputTokens": 569,
+  "costMicroUsd": 12998
+}

@@ -1,0 +1,78 @@
+{
+  "file": "atlas-01.jpg",
+  "sha256": "b4b0de728caaac205492e8487daca15c3ee15ad21c9c43bd75e2aa86d08935d1",
+  "ms": 17104,
+  "answer": {
+    "document_type": "invoice",
+    "supplier": {
+      "name": "ATLAS DISTRIBUTION",
+      "ice": "001234567000089",
+      "if_number": "40112233",
+      "address": "45, rue Ibnou Mounir, zone industrielle Casablanca"
+    },
+    "invoice_number": "FAC-26-04512",
+    "invoice_date": "2026-09-24",
+    "prices_include_tax": false,
+    "lines": [
+      {
+        "label": "SAMSUNG GALAXY A55 5G 128GB NAVY",
+        "reference": "SM-A556B",
+        "quantity": "5",
+        "unit_price": "3250.00",
+        "tva_rate": "20",
+        "line_total": "16250.00"
+      },
+      {
+        "label": "HP 250 G10 I5-1335U 8GB 512GB SSD W11",
+        "reference": "8A5D4EA",
+        "quantity": "3",
+        "unit_price": "5350.00",
+        "tva_rate": "20",
+        "line_total": "16050.00"
+      },
+      {
+        "label": "CANON PIXMA G3470 MULTIFONCTION WIFI",
+        "reference": "G3470",
+        "quantity": "2",
+        "unit_price": "1390.00",
+        "tva_rate": "20",
+        "line_total": "2780.00"
+      },
+      {
+        "label": "LOGITECH M185 SOURIS SANS FIL GRIS",
+        "reference": "910-002238",
+        "quantity": "10",
+        "unit_price": "85.00",
+        "tva_rate": "20",
+        "line_total": "850.00"
+      },
+      {
+        "label": "CABLE HDMI 2.0 1.5M",
+        "reference": "HDMI-15",
+        "quantity": "20",
+        "unit_price": "18.00",
+        "tva_rate": "20",
+        "line_total": "360.00"
+      },
+      {
+        "label": "LOGITECH MX KEYS S CLAVIER SANS FIL",
+        "reference": "920-011587",
+        "quantity": "2",
+        "unit_price": "1090.00",
+        "tva_rate": "20",
+        "line_total": "2180.00"
+      }
+    ],
+    "totals": {
+      "ht": "38470.00",
+      "tva": "7694.00",
+      "ttc": "46164.00"
+    },
+    "readability": "good",
+    "notes": []
+  },
+  "model": "gpt-6.1-sol",
+  "inputTokens": 3221,
+  "outputTokens": 602,
+  "costMicroUsd": 12462
+}

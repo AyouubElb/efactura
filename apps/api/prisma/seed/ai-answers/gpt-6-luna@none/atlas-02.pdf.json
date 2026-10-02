@@ -1,0 +1,70 @@
+{
+  "file": "atlas-02.pdf",
+  "sha256": "9886c7e528d399e642626d9b09917c5a41a755accfbc0d1cf70974f03bb73ce7",
+  "ms": 7072,
+  "answer": {
+    "document_type": "invoice",
+    "supplier": {
+      "name": "ATLAS DISTRIBUTION",
+      "ice": "001234567000089",
+      "if_number": "40112233",
+      "address": "45, rue Ibnou Mounir, zone industrielle, Casablanca"
+    },
+    "invoice_number": "FAC-26-04598",
+    "invoice_date": "2026-09-30",
+    "prices_include_tax": false,
+    "lines": [
+      {
+        "label": "SAMSUNG GALAXY A55 5G 128GB NAVY",
+        "reference": "SM-A556B",
+        "quantity": "3",
+        "unit_price": "3250.00",
+        "tva_rate": "20",
+        "line_total": "9750.00"
+      },
+      {
+        "label": "SAMSUNG GALAXY A15 128GB BLACK",
+        "reference": "SM-A155F",
+        "quantity": "6",
+        "unit_price": "1190.00",
+        "tva_rate": "20",
+        "line_total": "7140.00"
+      },
+      {
+        "label": "CANON PIXMA G3470 MULTIFONCTION WIFI",
+        "reference": "G3470",
+        "quantity": "1",
+        "unit_price": "1390.00",
+        "tva_rate": "20",
+        "line_total": "1390.00"
+      },
+      {
+        "label": "LOGITECH M185 SOURIS SANS FIL GRIS",
+        "reference": "910-002238",
+        "quantity": "10",
+        "unit_price": "85.00",
+        "tva_rate": "20",
+        "line_total": "850.00"
+      },
+      {
+        "label": "SAMSUNG CHARGEUR RAPIDE 25W USB-C",
+        "reference": "EP-TA800NBEGEU",
+        "quantity": "10",
+        "unit_price": "95.00",
+        "tva_rate": "20",
+        "line_total": "950.00"
+      }
+    ],
+    "totals": {
+      "ht": "20080.00",
+      "tva": "4016.00",
+      "ttc": "24096.00"
+    },
+    "readability": "good",
+    "notes": []
+  },
+  "model": "gpt-6-luna",
+  "inputTokens": 3624,
+  "outputTokens": 368,
+  "costMicroUsd": 546
+}

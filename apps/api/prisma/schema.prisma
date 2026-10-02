@@ -313,7 +313,7 @@ model PurchaseInvoice {
   fileType       String         @map("file_type")
   fileSize       Int            @map("file_size")
   pageCount      Int?           @map("page_count")
-  fileSha256     String         @unique @map("file_sha256") @db.Char(64) // the same file is never imported twice
+  fileSha256     String         @map("file_sha256") @db.Char(64) // unique among the purchases not discarded, by hand in a migration
   proposal       Json? // the AI's answer, untouched
   reviewDraft    Json?          @map("review_draft") // the person's edits so far
   aiModel        String?        @map("ai_model")

@@ -1,0 +1,54 @@
+{
+  "file": "maghreb-03.pdf",
+  "sha256": "0ac93fc89936fb49aa448dc41f34d6223aaab85db68a94ea6b9e26bf5af42f0f",
+  "ms": 8350,
+  "answer": {
+    "document_type": "invoice",
+    "supplier": {
+      "name": "MAGHREB IT SUPPLY",
+      "ice": "002345678000012",
+      "if_number": "40445566",
+      "address": "12, avenue Hassan II, Rabat"
+    },
+    "invoice_number": "MIS/2026/1216",
+    "invoice_date": "2026-09-28",
+    "prices_include_tax": false,
+    "lines": [
+      {
+        "label": "Attache-câbles nylon 200mm noir (sachet de 100)",
+        "reference": "AC-200-N",
+        "quantity": "12",
+        "unit_price": "18.375",
+        "tva_rate": "20",
+        "line_total": "220.50"
+      },
+      {
+        "label": "Gaine thermorétractable 6mm (au mètre)",
+        "reference": "GT-6",
+        "quantity": "15",
+        "unit_price": "2.125",
+        "tva_rate": "20",
+        "line_total": "31.88"
+      },
+      {
+        "label": "Oppo A79 5G 8+128Go Glowing Green",
+        "reference": "CPH2553",
+        "quantity": "3",
+        "unit_price": "1780.00",
+        "tva_rate": "20",
+        "line_total": "5340.00"
+      }
+    ],
+    "totals": {
+      "ht": "5592.38",
+      "tva": "1118.48",
+      "ttc": "6710.86"
+    },
+    "readability": "good",
+    "notes": []
+  },
+  "model": "gpt-6-astra",
+  "inputTokens": 3586,
+  "outputTokens": 384,
+  "costMicroUsd": 55060
+}

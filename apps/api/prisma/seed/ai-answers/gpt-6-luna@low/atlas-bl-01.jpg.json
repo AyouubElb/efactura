@@ -1,0 +1,62 @@
+{
+  "file": "atlas-bl-01.jpg",
+  "sha256": "3a71a5772fb3397f013fc0c87b074dfd0ae79a779b787099dd78526cd42d5c4b",
+  "ms": 6351,
+  "answer": {
+    "document_type": "delivery_note",
+    "supplier": {
+      "name": "ATLAS DISTRIBUTION",
+      "ice": "001234567000089",
+      "if_number": "40112233",
+      "address": "45, rue Ibnou Mounir, zone industrielle, Casablanca"
+    },
+    "invoice_number": "BL-26-03981",
+    "invoice_date": "2026-09-23",
+    "prices_include_tax": false,
+    "lines": [
+      {
+        "label": "SAMSUNG GALAXY A55 5G 128GB NAVY",
+        "reference": "SM-A556B",
+        "quantity": "5",
+        "unit_price": null,
+        "tva_rate": null,
+        "line_total": null
+      },
+      {
+        "label": "HP 250 G10 I5-1335U 8GB 512GB SSD W11",
+        "reference": "8A5D4EA",
+        "quantity": "3",
+        "unit_price": null,
+        "tva_rate": null,
+        "line_total": null
+      },
+      {
+        "label": "CANON PIXMA G3470 MULTIFONCTION WIFI",
+        "reference": "G3470",
+        "quantity": "2",
+        "unit_price": null,
+        "tva_rate": null,
+        "line_total": null
+      },
+      {
+        "label": "LOGITECH M185 SOURIS SANS FIL GRIS",
+        "reference": "910-002238",
+        "quantity": "10",
+        "unit_price": null,
+        "tva_rate": null,
+        "line_total": null
+      }
+    ],
+    "totals": {
+      "ht": null,
+      "tva": null,
+      "ttc": null
+    },
+    "readability": "good",
+    "notes": []
+  },
+  "model": "gpt-6-luna",
+  "inputTokens": 3221,
+  "outputTokens": 570,
+  "costMicroUsd": 607
+}

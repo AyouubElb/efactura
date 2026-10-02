@@ -1,0 +1,46 @@
+{
+  "file": "maghreb-devis-01.jpg",
+  "sha256": "44de6972355a36224173432d7bc4a85c85f6c7da49afbd9b79089299e7b6458c",
+  "ms": 3051,
+  "answer": {
+    "document_type": "quote",
+    "supplier": {
+      "name": "MAGHREB IT SUPPLY",
+      "ice": "002345678000012",
+      "if_number": "40445566",
+      "address": "12, avenue Hassan II, Rabat"
+    },
+    "invoice_number": "DV-MIS-2026-311",
+    "invoice_date": "2026-09-16",
+    "prices_include_tax": false,
+    "lines": [
+      {
+        "label": "Dell Vostro 3520 i5-1235U 8Go 512Go",
+        "reference": "N1608PVNB3520",
+        "quantity": "5",
+        "unit_price": "5900.00",
+        "tva_rate": "20",
+        "line_total": "29500.00"
+      },
+      {
+        "label": "Souris optique USB Dell MS116",
+        "reference": "570-AAIS",
+        "quantity": "5",
+        "unit_price": "65.00",
+        "tva_rate": "20",
+        "line_total": "325.00"
+      }
+    ],
+    "totals": {
+      "ht": "29825.00",
+      "tva": "5965.00",
+      "ttc": "35790.00"
+    },
+    "readability": "good",
+    "notes": []
+  },
+  "model": "gpt-6-luna",
+  "inputTokens": 3221,
+  "outputTokens": 222,
+  "costMicroUsd": 433
+}

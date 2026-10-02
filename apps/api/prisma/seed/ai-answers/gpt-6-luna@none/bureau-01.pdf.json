@@ -1,0 +1,54 @@
+{
+  "file": "bureau-01.pdf",
+  "sha256": "30912a9c8046f5721e5b8a06de5173e7e9697536faa8fb2e4930e6fc38d18103",
+  "ms": 3660,
+  "answer": {
+    "document_type": "invoice",
+    "supplier": {
+      "name": "BUREAU PLUS",
+      "ice": "003456789000045",
+      "if_number": "15873421",
+      "address": "15, rue Derb Omar - Casablanca"
+    },
+    "invoice_number": "2026/0387",
+    "invoice_date": "2026-09-22",
+    "prices_include_tax": true,
+    "lines": [
+      {
+        "label": "Ramette papier A4 80g Double A",
+        "reference": null,
+        "quantity": "20",
+        "unit_price": "52.00",
+        "tva_rate": null,
+        "line_total": "1040.00"
+      },
+      {
+        "label": "Câble HDMI 1,5m",
+        "reference": null,
+        "quantity": "10",
+        "unit_price": "45.00",
+        "tva_rate": null,
+        "line_total": "450.00"
+      },
+      {
+        "label": "Souris USB filaire",
+        "reference": null,
+        "quantity": "5",
+        "unit_price": "60.00",
+        "tva_rate": null,
+        "line_total": "300.00"
+      }
+    ],
+    "totals": {
+      "ht": null,
+      "tva": null,
+      "ttc": "1790.00"
+    },
+    "readability": "good",
+    "notes": []
+  },
+  "model": "gpt-6-luna",
+  "inputTokens": 866,
+  "outputTokens": 230,
+  "costMicroUsd": 202
+}

@@ -11,6 +11,8 @@
     "dev": "nest start --watch",
     "typecheck": "tsc --noEmit",
     "create-admin": "tsx prisma/create-admin.ts",
+    "sample-invoices": "tsx prisma/seed/sample-invoices.ts",
+    "ai-test": "tsx prisma/seed/ai-test.ts",
     "postinstall": "prisma generate",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
@@ -45,6 +47,8 @@
     "class-validator": "^0.15.1",
     "ioredis": "^6.0.0",
     "nodemailer": "^10.0.11",
+    "openai": "^7.25.0",
+    "pdf-lib": "^1.17.1",
     "pdfmake": "^0.3.11",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"

@@ -20,6 +20,11 @@ export enum Environment {
   Test = 'test',
 }
 
+export enum InvoiceReaderMode {
+  OpenAi = 'openai',
+  Replay = 'replay',
+}
+
 export class EnvironmentVariables {
   @IsEnum(Environment)
   NODE_ENV: Environment = Environment.Development;
@@ -89,6 +94,20 @@ export class EnvironmentVariables {
   @IsString()
   @IsNotEmpty()
   S3_SECRET_ACCESS_KEY: string;
+
+  @IsString()
+  @MinLength(20)
+  OPENAI_API_KEY: string;
+
+  // Chosen by the AI test: pnpm --filter api ai-test
+  @Matches(/^[a-z0-9][a-z0-9.-]*$/, {
+    message: 'OPENAI_MODEL must be a model id like gpt-6-luna',
+  })
+  OPENAI_MODEL: string = 'gpt-6-luna';
+
+  // On the PC, replay answers with the AI's saved answers: free and always the same
+  @IsEnum(InvoiceReaderMode)
+  INVOICE_READER: InvoiceReaderMode = InvoiceReaderMode.OpenAi;
 }
 
 // Runs once at startup: a missing or wrong setting stops the API with a clear message

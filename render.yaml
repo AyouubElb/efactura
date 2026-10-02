@@ -61,3 +61,8 @@ services:
         sync: false
       - key: S3_SECRET_ACCESS_KEY
         sync: false
+      # OpenAI's key, on an account with a monthly budget limit
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-6-luna

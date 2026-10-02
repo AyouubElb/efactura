@@ -15,6 +15,7 @@ import { EmailModule } from './modules/email/email.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { InvoicesModule } from './modules/invoices/invoices.module.js';
 import { ProductsModule } from './modules/products/products.module.js';
+import { PurchasesModule } from './modules/purchases/purchases.module.js';
 import { QuotesModule } from './modules/quotes/quotes.module.js';
 import { SettingsModule } from './modules/settings/settings.module.js';
 import { StorageModule } from './modules/storage/storage.module.js';
@@ -44,6 +45,7 @@ import { UsersModule } from './modules/users/users.module.js';
     QuotesModule,
     InvoicesModule,
     DashboardModule,
+    PurchasesModule,
     EmailWorkerModule,
     HealthModule,
   ],

@@ -1,0 +1,46 @@
+{
+  "file": "bureau-02.jpg",
+  "sha256": "c207e30e21279e82fbc770953d17d593da9dccac2b841a7d96716b3bf8e75d4f",
+  "ms": 10432,
+  "answer": {
+    "document_type": "invoice",
+    "supplier": {
+      "name": "BUREAU PLUS",
+      "ice": null,
+      "if_number": null,
+      "address": "15, rue Derb Omar - Casablanca"
+    },
+    "invoice_number": "2026/0412",
+    "invoice_date": "2026-09-29",
+    "prices_include_tax": true,
+    "lines": [
+      {
+        "label": "Multiprise 5 prises avec interrupteur",
+        "reference": null,
+        "quantity": "4",
+        "unit_price": "89.00",
+        "tva_rate": null,
+        "line_total": "356.00"
+      },
+      {
+        "label": "Clé USB 32Go Kingston",
+        "reference": null,
+        "quantity": "15",
+        "unit_price": "48.00",
+        "tva_rate": null,
+        "line_total": "720.00"
+      }
+    ],
+    "totals": {
+      "ht": null,
+      "tva": null,
+      "ttc": "1076.00"
+    },
+    "readability": "good",
+    "notes": []
+  },
+  "model": "gpt-6.1-sol",
+  "inputTokens": 3221,
+  "outputTokens": 267,
+  "costMicroUsd": 9112
+}
