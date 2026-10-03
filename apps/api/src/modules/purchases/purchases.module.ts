@@ -9,6 +9,7 @@ import {
 } from '../../config/env.validation.js';
 import { OpenAiReader } from './extraction.service.js';
 import { INVOICE_READER, type InvoiceReader } from './invoice-reader.js';
+import { MatchingService } from './matching.service.js';
 import { PurchasesController } from './purchases.controller.js';
 import { PURCHASES_QUEUE, PurchasesQueue } from './purchases.queue.js';
 import { PurchasesService } from './purchases.service.js';
@@ -44,6 +45,7 @@ function invoiceReader(config: ConfigService<EnvironmentVariables, true>): Invoi
   providers: [
     PurchasesService,
     PurchasesQueue,
+    MatchingService,
     ReadProcessor,
     { provide: INVOICE_READER, inject: [ConfigService], useFactory: invoiceReader },
   ],

@@ -1,5 +1,21 @@
 import { formatMoney } from '@efactura/shared';
+import type { MatchMethod } from '../../generated/prisma/client.js';
 import type { InvoiceReading } from './extraction.schema.js';
+
+// A close catalogue name for the picker: a score of 0.62 means 62 % alike
+export interface Candidate {
+  productId: string;
+  score: number;
+}
+
+// "Créer le produit": made at "Valider", with a selling price the person types
+export interface NewProduct {
+  name: string | null;
+  reference: string | null;
+  unit: string | null;
+  priceHtCentimes: number | null;
+  tvaRateBp: number | null;
+}
 
 // The person's working copy: it starts from the AI's answer, and only it is validated
 export interface DraftLine {
@@ -10,10 +26,17 @@ export interface DraftLine {
   unitPriceCentimes: number | null;
   lineTotalCentimes: number | null;
   tvaRateBp: number | null;
+  // The catalogue product and how it was found; null while none is chosen
+  productId: string | null;
+  match: MatchMethod | null;
+  candidates: Candidate[];
+  newProduct: NewProduct | null;
   // "Ignorer la ligne": a fee or a discount, kept here but never saved as a purchase line
   ignored: boolean;
   notes: string[];
 }
+
+export type LineMatch = Pick<DraftLine, 'productId' | 'match' | 'candidates'>;
 
 export interface PurchaseDraft {
   documentType: InvoiceReading['document_type'];
@@ -63,7 +86,11 @@ export function toRateBp(text: string | null): number | null {
 
 const withoutSpaces = (text: string | null) => text?.replace(/\s+/g, '') || null;
 
-export function startingDraft(answer: InvoiceReading, supplierId: string | null): PurchaseDraft {
+export function startingDraft(
+  answer: InvoiceReading,
+  supplierId: string | null,
+  matches: LineMatch[],
+): PurchaseDraft {
   return {
     documentType: answer.document_type,
     supplier: {
@@ -76,7 +103,7 @@ export function startingDraft(answer: InvoiceReading, supplierId: string | null)
     invoiceNumber: answer.invoice_number,
     invoiceDate: answer.invoice_date,
     pricesIncludeTax: answer.prices_include_tax,
-    lines: answer.lines.map((line) => {
+    lines: answer.lines.map((line, index) => {
       const price = toCentimes(line.unit_price);
       const total = toCentimes(line.line_total);
       const notes: string[] = [];
@@ -93,6 +120,8 @@ export function startingDraft(answer: InvoiceReading, supplierId: string | null)
         unitPriceCentimes: price.value,
         lineTotalCentimes: total.value,
         tvaRateBp: toRateBp(line.tva_rate),
+        ...matches[index],
+        newProduct: null,
         ignored: false,
         notes,
       };

@@ -6,6 +6,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -24,6 +25,7 @@ import {
   PurchaseUploadLinkDto,
   RegisterPurchaseDto,
 } from './dto/purchases.dto.js';
+import { ReviewDraftDto, ReviewSavedDto } from './dto/review-draft.dto.js';
 import { PurchasesService } from './purchases.service.js';
 
 // Supplier invoices, open to every logged-in person
@@ -65,6 +67,13 @@ export class PurchasesController {
   @ApiDataResponse(FileLinkDto)
   fileLink(@Param('id', ParseUUIDPipe) id: string) {
     return this.purchases.fileLink(id);
+  }
+
+  // Saved as the person types: the whole brouillon each time
+  @Put(':id/review')
+  @ApiDataResponse(ReviewSavedDto)
+  saveReview(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ReviewDraftDto) {
+    return this.purchases.saveReview(id, dto);
   }
 
   @Post(':id/retry')

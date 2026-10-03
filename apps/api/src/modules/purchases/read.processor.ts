@@ -18,6 +18,7 @@ import {
   type FileType,
   type InvoiceReader,
 } from './invoice-reader.js';
+import { MatchingService } from './matching.service.js';
 import { PURCHASES_QUEUE, retryDelay, type ReadJob } from './purchases.queue.js';
 
 const MAX_PAGES = 5;
@@ -43,6 +44,7 @@ export class ReadProcessor extends WorkerHost {
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
     private readonly activity: ActivityService,
+    private readonly matching: MatchingService,
     @Inject(INVOICE_READER) private readonly reader: InvoiceReader,
   ) {
     super();
@@ -71,7 +73,8 @@ export class ReadProcessor extends WorkerHost {
       throw error instanceof DocumentRefused ? new UnrecoverableError(error.message) : error;
     });
     const answer = reading.answer as InvoiceReading;
-    const draft = startingDraft(answer, await this.supplierWithIce(answer.supplier.ice));
+    const supplierId = await this.supplierWithIce(answer.supplier.ice);
+    const draft = startingDraft(answer, supplierId, await this.matching.match(supplierId, answer.lines));
 
     // A purchase discarded meanwhile stays discarded
     const saved = await this.prisma.$transaction(async (tx) => {

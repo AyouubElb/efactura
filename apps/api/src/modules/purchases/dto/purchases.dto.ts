@@ -4,7 +4,9 @@ import { IsIn, IsInt, IsOptional, Matches, Max, Min } from 'class-validator';
 import { PageQueryDto } from '../../../common/validation/list-query.dto.js';
 import { PurchaseStatus } from '../../../generated/prisma/client.js';
 import { ActivityEntryDto } from '../../activity/dto/activity-entry.dto.js';
+import type { PurchaseDraft } from '../draft.js';
 import { FILE_TYPES, type FileType } from '../invoice-reader.js';
+import { ReviewDraftDto } from './review-draft.dto.js';
 
 export const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const SHA256 = /^[0-9a-f]{64}$/;
@@ -118,12 +120,11 @@ export class PurchaseDetailDto extends PurchaseDto {
   proposal: object | null;
 
   @ApiProperty({
-    type: 'object',
-    additionalProperties: true,
+    type: ReviewDraftDto,
     nullable: true,
     description: 'The working copy a person checks, then validates',
   })
-  draft: object | null;
+  draft: PurchaseDraft | null;
 
   @ApiProperty({ type: [ActivityEntryDto] })
   history: ActivityEntryDto[];

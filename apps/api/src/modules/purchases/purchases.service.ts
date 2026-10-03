@@ -16,6 +16,7 @@ import type {
   PurchaseStatus,
 } from '../../generated/prisma/client.js';
 import { ActivityService } from '../activity/activity.service.js';
+import { json } from '../documents/drafts.js';
 import { StorageService } from '../storage/storage.service.js';
 import type { PurchaseDraft } from './draft.js';
 import {
@@ -27,6 +28,7 @@ import {
   type PurchaseUploadLinkDto,
   type RegisterPurchaseDto,
 } from './dto/purchases.dto.js';
+import type { ReviewDraftDto, ReviewSavedDto } from './dto/review-draft.dto.js';
 import type { FileType } from './invoice-reader.js';
 import { PurchasesQueue } from './purchases.queue.js';
 
@@ -40,6 +42,15 @@ const EXTENSIONS: Record<FileType, string> = {
 // A worker that died mid-read leaves the row "reading": after this, it shows as failed
 const STUCK_AFTER_MS = 10 * 60_000;
 const STUCK_MESSAGE = "La lecture n'a pas abouti : utilisez « Relancer »";
+
+const NOT_EDITABLE: Record<PurchaseStatus, string> = {
+  uploaded: 'Lecture en cours : attendez son résultat',
+  reading: 'Lecture en cours : attendez son résultat',
+  ready: 'Enregistrement impossible : réessayez',
+  failed: STUCK_MESSAGE,
+  confirmed: 'Achat déjà validé : il ne peut plus être modifié',
+  discarded: 'Achat écarté : il ne peut plus être modifié',
+};
 
 const LIST = {
   include: { uploadedBy: { select: { id: true, fullName: true } } },
@@ -154,7 +165,7 @@ export class PurchasesService {
       aiModel: row.aiModel,
       aiCostMicroUsd: row.aiCostMicroUsd,
       proposal: row.proposal as object | null,
-      draft: row.reviewDraft as object | null,
+      draft: row.reviewDraft as PurchaseDraft | null,
       history: await this.activity.forEntity(
         { type: 'purchase_invoice', id },
         reader,
@@ -168,6 +179,23 @@ export class PurchasesService {
       select: { fileKey: true },
     });
     return { url: await this.storage.linkToRead(row.fileKey) };
+  }
+
+  // Replaced whole at each save, so the last save wins; no history line until "Valider"
+  async saveReview(id: string, draft: ReviewDraftDto): Promise<ReviewSavedDto> {
+    const updatedAt = new Date();
+    const { count } = await this.prisma.purchaseInvoice.updateMany({
+      where: { id, status: 'ready' },
+      data: { reviewDraft: json(draft), updatedAt },
+    });
+    if (count === 0) {
+      const { status } = await this.prisma.purchaseInvoice.findUniqueOrThrow({
+        where: { id },
+        select: { status: true },
+      });
+      throw new ConflictException({ code: 'NOT_EDITABLE', message: NOT_EDITABLE[status] });
+    }
+    return { updatedAt };
   }
 
   // "Relancer": a failed read, one never queued, or one stuck after a restart
