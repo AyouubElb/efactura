@@ -10,10 +10,10 @@ import { lockRow } from '../../common/prisma/lock-row.js';
 import { PrismaService } from '../../common/prisma/prisma.service.js';
 import { isUniqueViolation } from '../../common/prisma/unique-violation.js';
 import { Page } from '../../common/response/page.js';
-import type {
+import {
   Prisma,
-  PurchaseInvoice,
-  PurchaseStatus,
+  type PurchaseInvoice,
+  type PurchaseStatus,
 } from '../../generated/prisma/client.js';
 import { ActivityService } from '../activity/activity.service.js';
 import { json } from '../documents/drafts.js';
@@ -45,11 +45,18 @@ const EXTENSIONS: Record<FileType, string> = {
 const STUCK_AFTER_MS = 10 * 60_000;
 const STUCK_MESSAGE = "La lecture n'a pas abouti : utilisez « Relancer »";
 
-const LIST = {
-  include: { uploadedBy: { select: { id: true, fullName: true } } },
-} as const;
-
-type Row = Prisma.PurchaseInvoiceGetPayload<typeof LIST>;
+interface SummaryRow {
+  id: string;
+  status: PurchaseStatus;
+  fileType: string;
+  supplierName: string | null;
+  invoiceNumber: string | null;
+  invoiceDate: string | null;
+  totalTtcCentimes: number | null;
+  uploadedById: string;
+  uploadedByName: string;
+  createdAt: Date;
+}
 
 @Injectable()
 export class PurchasesService {
@@ -131,30 +138,24 @@ export class PurchasesService {
     pageSize,
     status,
   }: PurchaseListQueryDto): Promise<Page<PurchaseDto>> {
-    const where: Prisma.PurchaseInvoiceWhereInput = { status };
-    const [rows, total] = await this.prisma.$transaction([
-      this.prisma.purchaseInvoice.findMany({
-        ...LIST,
-        where,
-        orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
-      this.prisma.purchaseInvoice.count({ where }),
+    const stuckBefore = stuckCutoff();
+    const where = byStatus(status, stuckBefore);
+    const [rows, [{ total }]] = await this.prisma.$transaction([
+      this.summaries(where, stuckBefore, Prisma.sql`LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`),
+      this.prisma.$queryRaw<{ total: number }[]>`
+        SELECT count(*)::int AS total FROM purchase_invoices p WHERE ${where}`,
     ]);
     return new Page(rows.map(toDto), page, pageSize, total);
   }
 
   async get(id: string, reader: AuthUser): Promise<PurchaseDetailDto> {
-    const row = await this.prisma.purchaseInvoice.findUniqueOrThrow({
-      ...LIST,
-      where: { id },
-    });
-    const stuck = isStuck(row);
+    const row = await this.prisma.purchaseInvoice.findUniqueOrThrow({ where: { id } });
+    const stuckBefore = stuckCutoff();
+    const [summary] = await this.summaries(Prisma.sql`p.id = ${id}::uuid`, stuckBefore, Prisma.empty);
     return {
-      ...toDto(row),
+      ...toDto(summary),
       pageCount: row.pageCount,
-      error: stuck ? STUCK_MESSAGE : row.error,
+      error: isStuck(row, stuckBefore) ? STUCK_MESSAGE : row.error,
       attempts: row.attempts,
       aiModel: row.aiModel,
       aiCostMicroUsd: row.aiCostMicroUsd,
@@ -266,7 +267,7 @@ export class PurchasesService {
       const { count } = await tx.purchaseInvoice.updateMany({
         where:
           from === 'reading'
-            ? { id, status: 'reading', updatedAt: { lt: new Date(Date.now() - STUCK_AFTER_MS) } }
+            ? { id, status: 'reading', updatedAt: { lt: stuckCutoff() } }
             : { id, status: from },
         data: { status: 'reading', error: null, attempts: 0 },
       });
@@ -293,6 +294,32 @@ export class PurchasesService {
         message: "Facture enregistrée, mais la lecture n'a pas pu démarrer : utilisez « Relancer »",
       });
     }
+  }
+
+  // A few values of each brouillon, read by the database: never its lines
+  private summaries(where: Prisma.Sql, stuckBefore: Date, limit: Prisma.Sql) {
+    return this.prisma.$queryRaw<SummaryRow[]>`
+      SELECT p.id,
+             CASE WHEN p.status = 'reading' AND p.updated_at < ${stuckBefore}
+                  THEN 'failed' ELSE p.status::text END AS status,
+             p.file_type AS "fileType",
+             CASE WHEN p.status = 'confirmed' THEN s.name
+                  ELSE p.review_draft->'supplier'->>'name' END AS "supplierName",
+             CASE WHEN p.status = 'confirmed' THEN p.supplier_invoice_number
+                  ELSE p.review_draft->>'invoiceNumber' END AS "invoiceNumber",
+             CASE WHEN p.status = 'confirmed' THEN to_char(p.invoice_date, 'YYYY-MM-DD')
+                  ELSE p.review_draft->>'invoiceDate' END AS "invoiceDate",
+             CASE WHEN p.status = 'confirmed' THEN p.total_ttc_centimes::float8
+                  ELSE (p.review_draft->'totals'->>'ttcCentimes')::float8 END AS "totalTtcCentimes",
+             u.id AS "uploadedById",
+             u.full_name AS "uploadedByName",
+             p.created_at AS "createdAt"
+        FROM purchase_invoices p
+        JOIN users u ON u.id = p.uploaded_by_id
+        LEFT JOIN suppliers s ON s.id = p.supplier_id
+       WHERE ${where}
+       ORDER BY p.created_at DESC, p.id
+       ${limit}`;
   }
 
   // A discarded upload never blocks the same file
@@ -325,29 +352,37 @@ function typeOfKey(fileKey: string): FileType {
   return type;
 }
 
-function isStuck(row: PurchaseInvoice): boolean {
-  return (
-    row.status === 'reading' &&
-    Date.now() - row.updatedAt.getTime() > STUCK_AFTER_MS
-  );
+const stuckCutoff = () => new Date(Date.now() - STUCK_AFTER_MS);
+
+function isStuck(row: PurchaseInvoice, stuckBefore = stuckCutoff()): boolean {
+  return row.status === 'reading' && row.updatedAt < stuckBefore;
 }
 
-function toDto(row: Row): Pick<PurchaseDto, keyof PurchaseDto> {
-  const draft = row.reviewDraft as PurchaseDraft | null;
-  const confirmed = row.status === 'confirmed';
+// Shown as failed, so filtered as failed; the main list leaves out the discarded
+function byStatus(status: PurchaseStatus | undefined, stuckBefore: Date): Prisma.Sql {
+  if (status === undefined) {
+    return Prisma.sql`p.status <> 'discarded'`;
+  }
+  if (status === 'failed') {
+    return Prisma.sql`(p.status = 'failed' OR (p.status = 'reading' AND p.updated_at < ${stuckBefore}))`;
+  }
+  if (status === 'reading') {
+    return Prisma.sql`p.status = 'reading' AND p.updated_at >= ${stuckBefore}`;
+  }
+  return Prisma.sql`p.status = ${status}::purchase_status`;
+}
+
+// A validated achat shows its supplier card and saved values, the others their brouillon
+function toDto(row: SummaryRow): Pick<PurchaseDto, keyof PurchaseDto> {
   return {
     id: row.id,
-    status: isStuck(row) ? 'failed' : row.status,
+    status: row.status,
     fileType: row.fileType,
-    supplierName: draft?.supplier.name ?? null,
-    invoiceNumber: confirmed
-      ? row.supplierInvoiceNumber
-      : (draft?.invoiceNumber ?? null),
-    invoiceDate: draft?.invoiceDate ?? null,
-    totalTtcCentimes: confirmed
-      ? row.totalTtcCentimes
-      : (draft?.totals.ttcCentimes ?? null),
-    uploadedBy: row.uploadedBy,
+    supplierName: row.supplierName,
+    invoiceNumber: row.invoiceNumber,
+    invoiceDate: row.invoiceDate,
+    totalTtcCentimes: row.totalTtcCentimes,
+    uploadedBy: { id: row.uploadedById, fullName: row.uploadedByName },
     createdAt: row.createdAt,
   };
 }

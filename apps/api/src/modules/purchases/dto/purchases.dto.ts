@@ -49,7 +49,10 @@ export class RegisterPurchaseDto {
 }
 
 export class PurchaseListQueryDto extends PageQueryDto {
-  @ApiPropertyOptional({ enum: PurchaseStatus })
+  @ApiPropertyOptional({
+    enum: PurchaseStatus,
+    description: 'Left out: every achat but the discarded ones. A read stuck for 10 minutes counts as failed',
+  })
   @IsOptional()
   @IsIn(Object.values(PurchaseStatus))
   status?: PurchaseStatus;
