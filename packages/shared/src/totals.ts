@@ -86,6 +86,16 @@ export function computeTotals(lines: LineInput[]): DocumentTotals {
   };
 }
 
+// A price printed with tax, before tax: 1 200,00 at 20 % → 1 000,00, rounded half-up
+export function htFromTtcCentimes(ttcCentimes: number, tvaRateBp: number): number {
+  assertCentimes(ttcCentimes);
+  assertRate(tvaRateBp);
+  if (ttcCentimes < 0) {
+    throw new RangeError(`A price with tax can't be negative: ${ttcCentimes}`);
+  }
+  return divideHalfUp(BigInt(ttcCentimes) * 10_000n, BigInt(10_000 + tvaRateBp));
+}
+
 // "2.500" → "2,5", as printed on documents
 export function formatQuantity(quantity: string): string {
   const thousandths = parseQuantity(quantity);

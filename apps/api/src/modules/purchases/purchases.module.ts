@@ -7,6 +7,10 @@ import {
   InvoiceReaderMode,
   type EnvironmentVariables,
 } from '../../config/env.validation.js';
+import { ProductsModule } from '../products/products.module.js';
+import { SettingsModule } from '../settings/settings.module.js';
+import { SuppliersModule } from '../suppliers/suppliers.module.js';
+import { ConfirmService } from './confirm.service.js';
 import { OpenAiReader } from './extraction.service.js';
 import { INVOICE_READER, type InvoiceReader } from './invoice-reader.js';
 import { MatchingService } from './matching.service.js';
@@ -30,6 +34,10 @@ function invoiceReader(config: ConfigService<EnvironmentVariables, true>): Invoi
 
 @Module({
   imports: [
+    // "Valider" creates suppliers and products, and checks the TVA rates
+    SuppliersModule,
+    ProductsModule,
+    SettingsModule,
     BullModule.registerQueue({
       name: PURCHASES_QUEUE,
       defaultJobOptions: {
@@ -44,6 +52,7 @@ function invoiceReader(config: ConfigService<EnvironmentVariables, true>): Invoi
   controllers: [PurchasesController],
   providers: [
     PurchasesService,
+    ConfirmService,
     PurchasesQueue,
     MatchingService,
     ReadProcessor,

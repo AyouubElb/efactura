@@ -76,6 +76,14 @@ export class PurchasesController {
     return this.purchases.saveReview(id, dto);
   }
 
+  // "Valider": everything saved in one go, or nothing
+  @Post(':id/confirm')
+  @HttpCode(200)
+  @ApiDataResponse(PurchaseDetailDto)
+  confirm(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthUser) {
+    return this.purchases.confirm(id, user);
+  }
+
   @Post(':id/retry')
   @HttpCode(200)
   @ApiDataResponse(PurchaseDetailDto)

@@ -18,6 +18,7 @@ import type {
 import { ActivityService } from '../activity/activity.service.js';
 import { json } from '../documents/drafts.js';
 import { StorageService } from '../storage/storage.service.js';
+import { ConfirmService } from './confirm.service.js';
 import type { PurchaseDraft } from './draft.js';
 import {
   MAX_FILE_BYTES,
@@ -29,6 +30,7 @@ import {
   type RegisterPurchaseDto,
 } from './dto/purchases.dto.js';
 import type { ReviewDraftDto, ReviewSavedDto } from './dto/review-draft.dto.js';
+import { notEditable } from './editable.js';
 import type { FileType } from './invoice-reader.js';
 import { PurchasesQueue } from './purchases.queue.js';
 
@@ -43,15 +45,6 @@ const EXTENSIONS: Record<FileType, string> = {
 const STUCK_AFTER_MS = 10 * 60_000;
 const STUCK_MESSAGE = "La lecture n'a pas abouti : utilisez « Relancer »";
 
-const NOT_EDITABLE: Record<PurchaseStatus, string> = {
-  uploaded: 'Lecture en cours : attendez son résultat',
-  reading: 'Lecture en cours : attendez son résultat',
-  ready: 'Enregistrement impossible : réessayez',
-  failed: STUCK_MESSAGE,
-  confirmed: 'Achat déjà validé : il ne peut plus être modifié',
-  discarded: 'Achat écarté : il ne peut plus être modifié',
-};
-
 const LIST = {
   include: { uploadedBy: { select: { id: true, fullName: true } } },
 } as const;
@@ -65,6 +58,7 @@ export class PurchasesService {
     private readonly storage: StorageService,
     private readonly activity: ActivityService,
     private readonly queue: PurchasesQueue,
+    private readonly confirming: ConfirmService,
   ) {}
 
   // The same file is refused before it is uploaded, so before any AI cost
@@ -193,9 +187,15 @@ export class PurchasesService {
         where: { id },
         select: { status: true },
       });
-      throw new ConflictException({ code: 'NOT_EDITABLE', message: NOT_EDITABLE[status] });
+      throw notEditable(status);
     }
     return { updatedAt };
+  }
+
+  // Validates the last saved brouillon: the screen saves before it calls this
+  async confirm(id: string, user: AuthUser): Promise<PurchaseDetailDto> {
+    await this.confirming.confirm(id, user);
+    return this.get(id, user);
   }
 
   // "Relancer": a failed read, one never queued, or one stuck after a restart

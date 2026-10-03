@@ -98,19 +98,26 @@ export class ProductsService {
       tvaRateBp: dto.tvaRateBp,
     };
     const id = await this.saving(data.reference, () =>
-      this.prisma.$transaction(async (tx) => {
-        const product = await tx.product.create({ data });
-        await this.activity.record(
-          tx,
-          user,
-          'product.created',
-          { type: 'product', id: product.id },
-          `a créé le produit ${product.name}`,
-        );
-        return product.id;
-      }),
+      this.prisma.$transaction((tx) => this.insert(tx, data, user)),
     );
     return this.get(id);
+  }
+
+  // Phase G's "Valider" calls it inside its own transaction, with the first cost
+  async insert(
+    tx: Prisma.TransactionClient,
+    data: Prisma.ProductUncheckedCreateInput,
+    user: AuthUser,
+  ): Promise<string> {
+    const product = await tx.product.create({ data });
+    await this.activity.record(
+      tx,
+      user,
+      'product.created',
+      { type: 'product', id: product.id },
+      `a créé le produit ${product.name}`,
+    );
+    return product.id;
   }
 
   async update(
