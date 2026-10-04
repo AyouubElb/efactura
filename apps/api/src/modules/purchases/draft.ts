@@ -84,7 +84,7 @@ export function toRateBp(text: string | null): number | null {
   return match ? Number(match[1]) * 100 + Number((match[2] ?? '').padEnd(2, '0')) : null;
 }
 
-const withoutSpaces = (text: string | null) => text?.replace(/\s+/g, '') || null;
+export const withoutSpaces = (text: string | null) => text?.replace(/\s+/g, '') || null;
 
 export function startingDraft(
   answer: InvoiceReading,

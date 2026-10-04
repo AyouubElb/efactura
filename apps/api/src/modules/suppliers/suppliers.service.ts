@@ -78,7 +78,7 @@ export class SuppliersService {
     return this.get(id);
   }
 
-  // Phase G's "Valider" calls it inside its own transaction
+  // "Valider" on a supplier invoice calls it inside its own transaction
   async insert(
     tx: Prisma.TransactionClient,
     data: EditableFields,

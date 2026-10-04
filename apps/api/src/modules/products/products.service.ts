@@ -103,7 +103,7 @@ export class ProductsService {
     return this.get(id);
   }
 
-  // Phase G's "Valider" calls it inside its own transaction, with the first cost
+  // "Valider" on a supplier invoice calls it inside its own transaction
   async insert(
     tx: Prisma.TransactionClient,
     data: Prisma.ProductUncheckedCreateInput,

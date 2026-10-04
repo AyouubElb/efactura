@@ -3,7 +3,6 @@ import {
   formatDate,
   formatMoney,
   htFromTtcCentimes,
-  isValidIceFormat,
   LINE_QUANTITY_PATTERN,
   MAX_CENTIMES,
   todayInMorocco,
@@ -13,7 +12,10 @@ import {
   ConflictException,
   Injectable,
 } from '@nestjs/common';
+import { plainToInstance, type ClassConstructor } from 'class-transformer';
+import { validate } from 'class-validator';
 import type { AuthUser } from '../../common/auth/auth-user.js';
+import { collectFields } from '../../common/filters/validation-exception.factory.js';
 import { lockRow } from '../../common/prisma/lock-row.js';
 import { PrismaService } from '../../common/prisma/prisma.service.js';
 import { isUniqueViolation } from '../../common/prisma/unique-violation.js';
@@ -21,15 +23,14 @@ import { Prisma, type Product } from '../../generated/prisma/client.js';
 import { ActivityService } from '../activity/activity.service.js';
 import { isDay, json } from '../documents/drafts.js';
 import { dayToDate } from '../documents/numbers.js';
-import { MAX_PRICE_CENTIMES } from '../products/dto/products.dto.js';
+import { CreateProductDto, MAX_PRICE_CENTIMES } from '../products/dto/products.dto.js';
 import { ProductsService } from '../products/products.service.js';
 import { SettingsService } from '../settings/settings.service.js';
+import { CreateSupplierDto } from '../suppliers/dto/suppliers.dto.js';
 import { SuppliersService } from '../suppliers/suppliers.service.js';
-import type { DraftLine, PurchaseDraft } from './draft.js';
+import { withoutSpaces, type DraftLine, type PurchaseDraft } from './draft.js';
 import { notEditable } from './editable.js';
 import { labelKey } from './matching.service.js';
-
-const DEFAULT_UNIT = 'pièce';
 
 type Problems = Record<string, string>;
 
@@ -66,7 +67,7 @@ export class ConfirmService {
           throw notEditable(purchase.status);
         }
         const draft = purchase.reviewDraft as unknown as PurchaseDraft;
-        const found = problems(draft, tvaRatesBp, todayInMorocco());
+        const found = { ...problems(draft, todayInMorocco()), ...(await formProblems(draft, tvaRatesBp)) };
         if (Object.keys(found).length > 0) {
           throw incomplete(found);
         }
@@ -211,7 +212,8 @@ export class ConfirmService {
       {
         name: product?.name?.trim() ?? '',
         reference: product?.reference?.trim() || null,
-        unit: product?.unit?.trim() || DEFAULT_UNIT,
+        // Left out, the database's own default unit applies
+        unit: product?.unit?.trim() || undefined,
         priceHtCentimes: product?.priceHtCentimes ?? 0,
         tvaRateBp: product?.tvaRateBp ?? 0,
       },
@@ -221,19 +223,10 @@ export class ConfirmService {
 }
 
 // Every rule a purchase must meet, by field: the screen shows each message next to its field
-function problems(draft: PurchaseDraft, tvaRatesBp: number[], today: string): Problems {
+function problems(draft: PurchaseDraft, today: string): Problems {
   const found: Problems = {};
   if (draft.documentType !== 'invoice') {
     found.documentType = "Ce document n'est pas une facture : corrigez son type ou écartez-le";
-  }
-  if (!draft.supplier.id) {
-    if (!draft.supplier.name?.trim()) {
-      found['supplier.name'] = 'Nom du fournisseur requis';
-    }
-    const ice = withoutSpaces(draft.supplier.ice);
-    if (ice && !isValidIceFormat(ice)) {
-      found['supplier.ice'] = "L'ICE compte 15 chiffres";
-    }
   }
   if (!draft.invoiceNumber?.trim()) {
     found.invoiceNumber = 'Numéro de facture requis';
@@ -254,13 +247,13 @@ function problems(draft: PurchaseDraft, tvaRatesBp: number[], today: string): Pr
   }
   draft.lines.forEach((line, index) => {
     if (!line.ignored) {
-      Object.assign(found, lineProblems(line, `lines.${index}`, tvaRatesBp));
+      Object.assign(found, lineProblems(line, `lines.${index}`));
     }
   });
   return found;
 }
 
-function lineProblems(line: DraftLine, at: string, tvaRatesBp: number[]): Problems {
+function lineProblems(line: DraftLine, at: string): Problems {
   const found: Problems = {};
   const discount = "Montant négatif : ignorez la ligne s'il s'agit d'une remise";
   if (!line.label?.trim()) {
@@ -286,31 +279,40 @@ function lineProblems(line: DraftLine, at: string, tvaRatesBp: number[]): Proble
     }
     return found;
   }
-  const product = line.newProduct;
-  if (!product) {
+  if (!line.newProduct) {
     found[`${at}.newProduct`] = 'Décrivez le nouveau produit';
-    return found;
-  }
-  const name = product.name?.trim() ?? '';
-  if (!name || name.length > 200) {
-    found[`${at}.newProduct.name`] = name ? 'Texte trop long' : 'Nom du produit requis';
-  }
-  if ((product.reference?.trim().length ?? 0) > 50) {
-    found[`${at}.newProduct.reference`] = 'Texte trop long';
-  }
-  if ((product.unit?.trim().length ?? 0) > 20) {
-    found[`${at}.newProduct.unit`] = 'Texte trop long';
-  }
-  const selling = amountProblem(product.priceHtCentimes, MAX_PRICE_CENTIMES, 'Montant négatif');
-  if (selling) {
-    found[`${at}.newProduct.priceHtCentimes`] = selling === 'Montant requis' ? 'Prix de vente requis' : selling;
-  }
-  if (product.tvaRateBp === null) {
-    found[`${at}.newProduct.tvaRateBp`] = 'Taux de TVA requis';
-  } else if (!tvaRatesBp.includes(product.tvaRateBp)) {
-    found[`${at}.newProduct.tvaRateBp`] = 'Taux de TVA non proposé dans les paramètres';
   }
   return found;
+}
+
+// A new supplier or product passes its own form's checks, so its card can be edited later
+async function formProblems(draft: PurchaseDraft, tvaRatesBp: number[]): Promise<Problems> {
+  const found: Problems = {};
+  if (!draft.supplier.id) {
+    const supplier = {
+      name: draft.supplier.name,
+      ice: withoutSpaces(draft.supplier.ice),
+      ifNumber: withoutSpaces(draft.supplier.ifNumber),
+      address: draft.supplier.address,
+    };
+    Object.assign(found, await formErrors(CreateSupplierDto, supplier, 'supplier'));
+  }
+  for (const [index, line] of draft.lines.entries()) {
+    if (line.ignored || line.match !== 'new_product' || !line.newProduct) {
+      continue;
+    }
+    const at = `lines.${index}.newProduct`;
+    const errors = await formErrors(CreateProductDto, line.newProduct, at);
+    Object.assign(found, errors);
+    if (!errors[`${at}.tvaRateBp`] && !tvaRatesBp.includes(line.newProduct.tvaRateBp ?? -1)) {
+      found[`${at}.tvaRateBp`] = 'Taux de TVA non proposé dans les paramètres';
+    }
+  }
+  return found;
+}
+
+async function formErrors(form: ClassConstructor<object>, values: object, at: string) {
+  return collectFields(await validate(plainToInstance(form, values)), at);
 }
 
 function amountProblem(value: number | null | undefined, max: number, negative: string) {
@@ -454,5 +456,3 @@ async function saveName(tx: Prisma.TransactionClient, supplierId: string, label:
                              THEN supplier_product_names.times_confirmed + 1 ELSE 1 END,
       last_confirmed_at = now()`;
 }
-
-const withoutSpaces = (text: string | null) => text?.replace(/\s+/g, '') || null;

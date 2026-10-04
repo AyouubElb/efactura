@@ -35,7 +35,7 @@ export function validationException(
   });
 }
 
-function collectFields(
+export function collectFields(
   errors: ValidationError[],
   parent = '',
 ): Record<string, string> {

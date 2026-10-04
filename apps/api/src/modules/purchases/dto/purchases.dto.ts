@@ -98,6 +98,23 @@ export class PurchaseDto {
   createdAt: Date;
 }
 
+export class DraftProductDto {
+  @ApiProperty()
+  id: string;
+
+  @ApiProperty({ example: 'Samsung Galaxy A55 5G 128 Go' })
+  name: string;
+
+  @ApiProperty({ nullable: true, example: 'SM-A556B' })
+  reference: string | null;
+
+  @ApiProperty({ example: 'pièce' })
+  unit: string;
+
+  @ApiProperty({ description: 'Archived since it was chosen: "Valider" refuses it' })
+  archived: boolean;
+}
+
 export class PurchaseDetailDto extends PurchaseDto {
   @ApiProperty({ nullable: true })
   pageCount: number | null;
@@ -128,6 +145,12 @@ export class PurchaseDetailDto extends PurchaseDto {
     description: 'The working copy a person checks, then validates',
   })
   draft: PurchaseDraft | null;
+
+  @ApiProperty({
+    type: [DraftProductDto],
+    description: 'Every product the brouillon points at, chosen or suggested, to show their names',
+  })
+  products: DraftProductDto[];
 
   @ApiProperty({ type: [ActivityEntryDto] })
   history: ActivityEntryDto[];

@@ -152,6 +152,7 @@ export class PurchasesService {
     const row = await this.prisma.purchaseInvoice.findUniqueOrThrow({ where: { id } });
     const stuckBefore = stuckCutoff();
     const [summary] = await this.summaries(Prisma.sql`p.id = ${id}::uuid`, stuckBefore, Prisma.empty);
+    const draft = row.reviewDraft as PurchaseDraft | null;
     return {
       ...toDto(summary),
       pageCount: row.pageCount,
@@ -160,7 +161,8 @@ export class PurchasesService {
       aiModel: row.aiModel,
       aiCostMicroUsd: row.aiCostMicroUsd,
       proposal: row.proposal as object | null,
-      draft: row.reviewDraft as PurchaseDraft | null,
+      draft,
+      products: await this.productsOf(draft),
       history: await this.activity.forEntity(
         { type: 'purchase_invoice', id },
         reader,
@@ -294,6 +296,28 @@ export class PurchasesService {
         message: "Facture enregistrée, mais la lecture n'a pas pu démarrer : utilisez « Relancer »",
       });
     }
+  }
+
+  // Every product the brouillon points at, chosen or suggested, so the screen can name them
+  private async productsOf(draft: PurchaseDraft | null) {
+    const ids = new Set<string>();
+    for (const line of draft?.lines ?? []) {
+      if (line.productId) {
+        ids.add(line.productId);
+      }
+      for (const candidate of line.candidates ?? []) {
+        ids.add(candidate.productId);
+      }
+    }
+    if (ids.size === 0) {
+      return [];
+    }
+    const rows = await this.prisma.product.findMany({
+      where: { id: { in: [...ids] } },
+      select: { id: true, name: true, reference: true, unit: true, archivedAt: true },
+      orderBy: { id: 'asc' },
+    });
+    return rows.map(({ archivedAt, ...product }) => ({ ...product, archived: archivedAt !== null }));
   }
 
   // A few values of each brouillon, read by the database: never its lines

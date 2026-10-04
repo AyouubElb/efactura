@@ -8,7 +8,7 @@ import { ProductsService } from './products.service.js';
   imports: [SettingsModule],
   controllers: [ProductsController],
   providers: [ProductsService],
-  // Phase G's "Valider" creates products with ProductsService.insert
+  // "Valider" on a supplier invoice creates products with ProductsService.insert
   exports: [ProductsService],
 })
 export class ProductsModule {}
