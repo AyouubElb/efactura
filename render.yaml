@@ -7,8 +7,8 @@ services:
     plan: free
     region: frankfurt
     # npx pins pnpm, Render's own can't be replaced; --prod=false keeps the build tools
-    # api... builds the shared package first
-    buildCommand: npx --yes pnpm@12.6.0 install --frozen-lockfile --prod=false && npx --yes pnpm@12.6.0 --filter api... build
+    # api... installs and builds only the API and the shared package, never the web app
+    buildCommand: npx --yes pnpm@12.6.0 --filter api... install --frozen-lockfile --prod=false && npx --yes pnpm@12.6.0 --filter api... build
     startCommand: node apps/api/dist/main.js
     healthCheckPath: /health
     # GitHub's checks apply the migrations, so Render waits for them

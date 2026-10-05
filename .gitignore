@@ -25,6 +25,11 @@ docs/
 .claude/
 skills-lock.json
 
+# Agent instructions and MCP servers — stay on this PC
+AGENTS.md
+CLAUDE.md
+.mcp.json
+
 # Local database setup — stays on this PC
 docker/
 

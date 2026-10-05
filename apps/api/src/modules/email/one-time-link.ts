@@ -10,7 +10,7 @@ export const ONE_TIME_LINK: Record<
 > = {
   invite: { path: 'invitation', status: 'invited', label: 'invitation' },
   reset: {
-    path: 'mot-de-passe',
+    path: 'reset-password',
     status: 'active',
     label: 'réinitialisation du mot de passe',
   },
