@@ -5,6 +5,7 @@ import {
   type ApiError,
   type ApiResult,
   type HttpMethod,
+  type PageMeta,
 } from './api-core';
 import { accessToken, clientIp, loginAgainUrl, renewInAction } from './session';
 
@@ -15,14 +16,19 @@ export class ApiReadError extends Error {
   }
 }
 
+export interface Paged<T> {
+  items: T[];
+  meta: PageMeta;
+}
+
 // Reads, for Server Components: they throw to error.tsx; a lost session goes back to the login
-export async function apiGet<T>(path: string): Promise<T> {
+async function read<T>(path: string) {
   const result = await callApi<T>(path, {
     accessToken: await accessToken(),
     clientIp: await clientIp(),
   });
   if (result.ok) {
-    return result.data;
+    return result;
   }
   if (result.error.statusCode === 401) {
     redirect(await loginAgainUrl());
@@ -31,6 +37,18 @@ export async function apiGet<T>(path: string): Promise<T> {
     notFound();
   }
   throw new ApiReadError(result.error);
+}
+
+export async function apiGet<T>(path: string): Promise<T> {
+  return (await read<T>(path)).data;
+}
+
+export async function apiGetPage<T>(path: string): Promise<Paged<T>> {
+  const { data, meta } = await read<T[]>(path);
+  return {
+    items: data,
+    meta: meta ?? { page: 1, pageSize: data.length, total: data.length },
+  };
 }
 
 // Writes, for Server Actions: they return; a 401 renews the session and tries once more

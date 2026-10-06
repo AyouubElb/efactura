@@ -16,18 +16,47 @@ export type ActionFailure = Extract<ActionResult, { ok: false }>;
 export const FIX_FIELDS = 'Corrigez les champs signalés.';
 export const NOT_ANSWERING =
   "L'application ne répond pas. Réessayez dans un instant.";
+export const GONE: ActionFailure = {
+  ok: false,
+  error: 'Cet élément est introuvable. Rechargez la page.',
+};
 
-export function toActionError(error: ApiError): ActionFailure {
+const recordId = z.uuid();
+
+export function isRecordId(value: unknown): value is string {
+  return recordId.safeParse(value).success;
+}
+
+export interface ErrorPlaces {
+  // The API's field name → the form's, when they differ
+  fields?: Record<string, string>;
+  // A 409 code → the form field it concerns
+  conflicts?: Record<string, string>;
+}
+
+export function toActionError(
+  error: ApiError,
+  { fields = {}, conflicts = {} }: ErrorPlaces = {},
+): ActionFailure {
   if (error.statusCode === 400 && error.fields) {
     return {
       ok: false,
       error: FIX_FIELDS,
       fieldErrors: Object.fromEntries(
         Object.entries(error.fields).map(([field, message]) => [
-          field,
+          fields[field] ?? field,
           [sentence(message)],
         ]),
       ),
+    };
+  }
+  const field = error.statusCode === 409 ? conflicts[error.code] : undefined;
+  if (field) {
+    return {
+      ok: false,
+      error: FIX_FIELDS,
+      code: error.code,
+      fieldErrors: { [field]: [sentence(error.message)] },
     };
   }
   return { ok: false, error: messageFor(error), code: error.code };

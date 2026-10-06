@@ -11,6 +11,7 @@
     "dev": "nest start --watch",
     "typecheck": "tsc --noEmit",
     "create-admin": "tsx prisma/create-admin.ts",
+    "set-logo": "tsx prisma/set-logo.ts",
     "sample-invoices": "tsx prisma/seed/sample-invoices.ts",
     "ai-test": "tsx prisma/seed/ai-test.ts",
     "postinstall": "prisma generate",

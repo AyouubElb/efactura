@@ -3,6 +3,9 @@
 // Amounts are in centimes: 350_000 = 3 500,00 DH.
 
 import 'dotenv/config';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   addDays,
   amountInWords,
@@ -10,8 +13,10 @@ import {
   formatDate,
   todayInMorocco,
 } from '@efactura/shared';
+import { ConfigService } from '@nestjs/config';
 import { PrismaPg } from '@prisma/adapter-pg';
 import argon2 from 'argon2';
+import type { EnvironmentVariables } from '../src/config/env.validation.js';
 import {
   Prisma,
   PrismaClient,
@@ -24,8 +29,18 @@ import {
   clientSnapshot,
   shopSnapshot,
 } from '../src/modules/documents/snapshots.js';
+import { StorageService } from '../src/modules/storage/storage.service.js';
 
 const DEMO_PASSWORD = 'Demo-2026';
+const LOCAL_HOSTS = ['localhost', '127.0.0.1', '::1'];
+
+// A fixed key: every seed rewrites the same file
+const LOGO_FILE = join(
+  dirname(fileURLToPath(import.meta.url)),
+  'seed',
+  'techstore-logo.png',
+);
+const LOGO_KEY = 'logos/5f0c2a7e-3b1d-4c8e-9a64-2d7b1e0f9c35.png';
 
 if (process.env.NODE_ENV === 'production') {
   throw new Error('The demo seed never runs in production.');
@@ -38,7 +53,7 @@ if (!url) {
 
 // The seed empties every table: it only ever runs on the database of this PC
 const host = new URL(url).hostname;
-if (!['localhost', '127.0.0.1', '::1'].includes(host)) {
+if (!LOCAL_HOSTS.includes(host)) {
   throw new Error(`The demo seed only runs on a local database, not on ${host}.`);
 }
 
@@ -55,13 +70,37 @@ async function emptyAllTables() {
   await prisma.$executeRawUnsafe(`TRUNCATE ${list} CASCADE`);
 }
 
+// Without the PC's file storage the seed still runs; the PDFs then print no logo
+async function storeLogo(): Promise<string | null> {
+  const endpoint = process.env.S3_ENDPOINT;
+  const storageHost = endpoint ? new URL(endpoint).hostname : 'no S3_ENDPOINT';
+  if (!LOCAL_HOSTS.includes(storageHost)) {
+    console.warn(`Logo skipped: the file storage isn't on this PC (${storageHost}).`);
+    return null;
+  }
+  try {
+    const storage = new StorageService(
+      new ConfigService<EnvironmentVariables, true>(),
+    );
+    await storage.onModuleInit();
+    await storage.save(LOGO_KEY, readFileSync(LOGO_FILE), 'image/png');
+    return LOGO_KEY;
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    console.warn(`Logo skipped: ${reason}. Start s3proxy, then seed again.`);
+    return null;
+  }
+}
+
 async function main() {
   await emptyAllTables();
   const passwordHash = await argon2.hash(DEMO_PASSWORD);
+  const logoKey = await storeLogo();
 
   await prisma.$transaction(async (tx) => {
     await tx.shopSettings.create({
       data: {
+        logoKey,
         legalName: 'TechStore Maarif SARL',
         address: '123, boulevard Al Massira, Maârif',
         city: 'Casablanca',
