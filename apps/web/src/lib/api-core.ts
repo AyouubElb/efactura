@@ -49,16 +49,59 @@ function internalKey(): string {
 
 export async function callApi<T>(
   path: string,
+  options: CallOptions = {},
+): Promise<ApiResult<T>> {
+  const response = await send(path, options, 'application/json');
+  return response instanceof Response
+    ? readEnvelope<T>(response)
+    : { ok: false, error: response };
+}
+
+export interface ApiFile {
+  bytes: ArrayBuffer;
+  fileName: string;
+}
+
+// A PDF, or the API's refusal in its usual envelope
+export async function callApiFile(
+  path: string,
+  options: CallOptions = {},
+): Promise<ApiResult<ApiFile>> {
+  const response = await send(
+    path,
+    options,
+    'application/pdf, application/json',
+  );
+  if (!(response instanceof Response)) {
+    return { ok: false, error: response };
+  }
+  const type = response.headers.get('content-type') ?? '';
+  if (response.ok && type.startsWith('application/pdf')) {
+    return {
+      ok: true,
+      data: {
+        bytes: await response.arrayBuffer(),
+        fileName: fileNameOf(response.headers.get('content-disposition')),
+      },
+    };
+  }
+  const result = await readEnvelope<unknown>(response);
+  return result.ok ? { ok: false, error: unexpected(response.status) } : result;
+}
+
+async function send(
+  path: string,
   {
     method = 'GET',
     body,
     accessToken,
     clientIp,
     timeoutMs = WAKE_TIMEOUT_MS,
-  }: CallOptions = {},
-): Promise<ApiResult<T>> {
+  }: CallOptions,
+  accept: string,
+): Promise<Response | ApiError> {
   const headers = new Headers({
-    Accept: 'application/json',
+    Accept: accept,
     'X-Internal-Key': internalKey(),
   });
   if (body !== undefined) {
@@ -71,9 +114,8 @@ export async function callApi<T>(
     headers.set('X-Forwarded-For', clientIp);
   }
 
-  let response: Response;
   try {
-    response = await fetchUntilAnswered(
+    return await fetchUntilAnswered(
       `${apiUrl()}${path}`,
       {
         method,
@@ -87,29 +129,35 @@ export async function callApi<T>(
     const timedOut =
       error instanceof DOMException && error.name === 'TimeoutError';
     return {
-      ok: false,
-      error: {
-        statusCode: 0,
-        code: timedOut ? 'TIMEOUT' : 'UNREACHABLE',
-        message: "L'application ne répond pas.",
-      },
+      statusCode: 0,
+      code: timedOut ? 'TIMEOUT' : 'UNREACHABLE',
+      message: "L'application ne répond pas.",
     };
   }
+}
 
+async function readEnvelope<T>(response: Response): Promise<ApiResult<T>> {
   const payload: unknown = await response.json().catch(() => null);
   if (isEnvelope(payload)) {
     return payload.success
       ? { ok: true, data: payload.data as T, meta: payload.meta }
       : { ok: false, error: payload.error };
   }
+  return { ok: false, error: unexpected(response.status) };
+}
+
+function unexpected(statusCode: number): ApiError {
   return {
-    ok: false,
-    error: {
-      statusCode: response.status,
-      code: 'UNEXPECTED_ANSWER',
-      message: "L'application a rencontré un problème.",
-    },
+    statusCode,
+    code: 'UNEXPECTED_ANSWER',
+    message: "L'application a rencontré un problème.",
   };
+}
+
+// inline; filename="FA-2026-0016.pdf" → FA-2026-0016.pdf
+function fileNameOf(disposition: string | null): string {
+  const name = disposition?.match(/filename="([^"]+)"/)?.[1];
+  return name && /^[\w.-]+$/.test(name) ? name : 'document.pdf';
 }
 
 const REFUSED_RETRY_MS = 2_000;

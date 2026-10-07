@@ -1,3 +1,4 @@
+import { isRecordId } from './action-result';
 import type { PageMeta } from './api-core';
 
 export type SearchParams = Record<string, string | string[] | undefined>;
@@ -6,6 +7,11 @@ export interface ListParams {
   search: string;
   archived: boolean;
   page: number;
+  // Devis and factures: a status tab and a client
+  status?: string;
+  client?: string;
+  // Activité: one person
+  user?: string;
 }
 
 const MAX_SEARCH = 100;
@@ -25,12 +31,46 @@ export function readListParams(params: SearchParams): ListParams {
   };
 }
 
-// Page 1 and the Actifs tab keep the address clean
+export function readDocumentListParams(
+  params: SearchParams,
+  statuses: readonly string[],
+): ListParams {
+  const status = first(params.status);
+  const client = first(params.client);
+  return {
+    search: '',
+    archived: false,
+    page: readListParams(params).page,
+    status: status && statuses.includes(status) ? status : undefined,
+    client: isRecordId(client) ? client : undefined,
+  };
+}
+
+export function readActivityParams(params: SearchParams): ListParams {
+  const user = first(params.user);
+  return {
+    search: '',
+    archived: false,
+    page: readListParams(params).page,
+    user: isRecordId(user) ? user : undefined,
+  };
+}
+
+// Page 1 and the first tab keep the address clean
 export function listHref(
   pathname: string,
-  { search, archived, page }: ListParams,
+  { search, archived, page, status, client, user }: ListParams,
 ): string {
   const query = new URLSearchParams();
+  if (status) {
+    query.set('status', status);
+  }
+  if (client) {
+    query.set('client', client);
+  }
+  if (user) {
+    query.set('user', user);
+  }
   if (search) {
     query.set('search', search);
   }
@@ -54,6 +94,21 @@ export function lastPageHref(
   return params.page > last
     ? listHref(pathname, { ...params, page: last })
     : null;
+}
+
+export function apiDocumentListQuery({
+  status,
+  client,
+  page,
+}: ListParams): string {
+  const query = new URLSearchParams({ page: String(page) });
+  if (status) {
+    query.set('status', status);
+  }
+  if (client) {
+    query.set('clientId', client);
+  }
+  return query.toString();
 }
 
 export function apiListQuery({ search, archived, page }: ListParams): string {

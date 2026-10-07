@@ -8,6 +8,8 @@ export interface FilterTab {
   label: string;
   href: string;
   current: boolean;
+  // Documents that need acting on, such as late invoices
+  count?: number;
 }
 
 export function FilterTabs({
@@ -34,6 +36,11 @@ export function FilterTabs({
           )}
         >
           {tab.label}
+          {tab.count ? (
+            <span className="inline-grid h-4.5 min-w-4.5 place-items-center rounded-xs bg-red-tint px-1 text-stamp font-bold text-red tabular-nums">
+              {tab.count}
+            </span>
+          ) : null}
           <PendingHint />
         </Link>
       ))}

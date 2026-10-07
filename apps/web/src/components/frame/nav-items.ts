@@ -1,6 +1,8 @@
 export interface NavItem {
   href: string;
   label: string;
+  // Other sections it stands for: an avoir lives under Factures
+  also?: string[];
 }
 
 export interface NavGroup {
@@ -21,7 +23,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Ventes',
     items: [
       { href: '/quotes', label: 'Devis' },
-      { href: '/invoices', label: 'Factures' },
+      { href: '/invoices', label: 'Factures', also: ['/credit-notes'] },
     ],
   },
   {

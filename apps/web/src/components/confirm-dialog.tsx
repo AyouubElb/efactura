@@ -16,7 +16,7 @@ import { FieldError } from '@/components/ui/field';
 import { WakingBanner } from '@/components/waking-banner';
 import { cn } from '@/lib/utils';
 
-// A question, its consequence, and two explicit answers; the red one does it
+// A question, its consequence, and two explicit answers; the red one does it, the main one when nothing is lost
 export function ConfirmDialog({
   open,
   onOpenChange,
@@ -26,6 +26,7 @@ export function ConfirmDialog({
   confirmLabel,
   pendingLabel,
   onConfirm,
+  tone = 'danger',
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -35,6 +36,7 @@ export function ConfirmDialog({
   confirmLabel: string;
   pendingLabel: string;
   onConfirm: () => Promise<string | null>;
+  tone?: 'danger' | 'main';
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -82,7 +84,7 @@ export function ConfirmDialog({
             </Button>
           </DialogClose>
           <Button
-            variant="dangerFill"
+            variant={tone === 'danger' ? 'dangerFill' : 'default'}
             onClick={confirm}
             aria-disabled={pending || undefined}
             className={cn(pending && 'pointer-events-none')}

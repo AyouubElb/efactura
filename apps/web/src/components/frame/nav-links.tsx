@@ -23,8 +23,9 @@ export function NavLinks({
               <p className="caps mx-2 mt-3 mb-0.5 text-pencil">{group.label}</p>
             )}
             {group.items.map((item) => {
-              const active =
-                pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const active = [item.href, ...(item.also ?? [])].some(
+                (href) => pathname === href || pathname.startsWith(`${href}/`),
+              );
               return (
                 <Link
                   key={item.href}

@@ -24,8 +24,9 @@ const RETRY_WINDOW_SECONDS = 30;
 export async function proxy(request: NextRequest) {
   const { pathname, search, searchParams } = request.nextUrl;
   const here = pathname + search;
-  // Server Actions are never redirected here: each action handles its own 401
-  const isAction = request.headers.has('next-action');
+  // Server Actions and the pickers' search are never redirected here: each answers its own 401
+  const isAction =
+    request.headers.has('next-action') || pathname.startsWith('/search/');
   const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value;
   const retried = request.cookies.has(RETRY_COOKIE);
 

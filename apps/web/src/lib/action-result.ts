@@ -90,6 +90,6 @@ function messageFor({ statusCode, message }: ApiError): string {
   return sentence(message);
 }
 
-function sentence(message: string): string {
+export function sentence(message: string): string {
   return /[.!?…]$/.test(message) ? message : `${message}.`;
 }

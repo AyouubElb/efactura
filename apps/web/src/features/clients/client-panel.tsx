@@ -39,20 +39,25 @@ export function ClientPanel({
   );
 }
 
-function ClientForm({
+// Also opened from a devis or facture's editor, which picks the client it saves
+export function ClientForm({
   client,
   defaultPaymentDays,
   onSaved,
+  initialName = '',
+  refreshPage = true,
 }: {
   client: Client | null;
   defaultPaymentDays: number;
-  onSaved: () => void;
+  onSaved: (client: Client) => void;
+  initialName?: string;
+  refreshPage?: boolean;
 }) {
   const form = useForm<ClientInput>({
     resolver: zodResolver(clientSchema),
     defaultValues: {
       type: client?.type ?? 'company',
-      name: client?.name ?? '',
+      name: client?.name ?? initialName,
       ice: client?.ice ?? '',
       address: client?.address ?? '',
       city: client?.city ?? '',
@@ -64,10 +69,10 @@ function ClientForm({
   const type = useWatch({ control: form.control, name: 'type' });
   const { onSubmit, pending, formError } = usePanelSubmit(
     form,
-    (values) => saveClient(client?.id ?? null, values),
-    ({ name }) => {
-      toast.success(`Client ${name} enregistré.`);
-      onSaved();
+    (values) => saveClient(client?.id ?? null, values, refreshPage),
+    (saved) => {
+      toast.success(`Client ${saved.name} enregistré.`);
+      onSaved(saved);
     },
   );
 

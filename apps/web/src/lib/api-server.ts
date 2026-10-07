@@ -2,7 +2,9 @@ import 'server-only';
 import { notFound, redirect } from 'next/navigation';
 import {
   callApi,
+  callApiFile,
   type ApiError,
+  type ApiFile,
   type ApiResult,
   type HttpMethod,
   type PageMeta,
@@ -96,4 +98,50 @@ export async function apiSendPublic<T = null>(
   body?: unknown,
 ): Promise<ApiResult<T>> {
   return callApi<T>(path, { method, body, clientIp: await clientIp() });
+}
+
+export async function apiGetPublic<T>(path: string): Promise<ApiResult<T>> {
+  return callApi<T>(path, { clientIp: await clientIp() });
+}
+
+// Route Handlers answer for themselves: a lost session comes back as a 401, never a redirect
+export async function apiRead<T>(path: string): Promise<ApiResult<T>> {
+  return withRenewal((token, ip) =>
+    callApi<T>(path, { accessToken: token, clientIp: ip }),
+  );
+}
+
+export async function apiReadFile(path: string): Promise<ApiResult<ApiFile>> {
+  return withRenewal((token, ip) =>
+    callApiFile(path, { accessToken: token, clientIp: ip }),
+  );
+}
+
+async function withRenewal<T>(
+  call: (token: string | undefined, ip: string | null) => Promise<ApiResult<T>>,
+): Promise<ApiResult<T>> {
+  const ip = await clientIp();
+  const first = await call(await accessToken(), ip);
+  if (first.ok || first.error.statusCode !== 401) {
+    return first;
+  }
+  const renewal = await renewInAction();
+  if (renewal.kind === 'renewed') {
+    return call(renewal.accessToken, ip);
+  }
+  return {
+    ok: false,
+    error:
+      renewal.kind === 'ended'
+        ? {
+            statusCode: 401,
+            code: 'SESSION_ENDED',
+            message: 'Votre session a pris fin.',
+          }
+        : {
+            statusCode: 0,
+            code: renewal.kind === 'raced' ? 'RACED' : 'UNREACHABLE',
+            message: "L'application ne répond pas.",
+          },
+  };
 }

@@ -4,7 +4,7 @@ import { WakingBanner } from '@/components/waking-banner';
 export function PageSkeleton({
   shape = 'list',
 }: {
-  shape?: 'list' | 'dashboard' | 'form';
+  shape?: 'list' | 'dashboard' | 'form' | 'editor' | 'document';
 }) {
   return (
     <div className="grid gap-6" aria-busy="true">
@@ -29,6 +29,37 @@ export function PageSkeleton({
       )}
       {shape === 'list' && <ListRows />}
       {shape === 'form' && <FormBlocks />}
+      {shape === 'editor' && (
+        <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_20rem]">
+          <div className="grid content-start gap-6">
+            <Skeleton className="h-9 max-w-md" />
+            <ListRows />
+          </div>
+          <SideBlocks count={1} />
+        </div>
+      )}
+      {shape === 'document' && (
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
+          <ListRows />
+          <SideBlocks count={3} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SideBlocks({ count }: { count: number }) {
+  return (
+    <div className="grid content-start gap-4">
+      {Array.from({ length: count }, (_, block) => (
+        <div
+          key={block}
+          className="grid gap-3 rounded-md border border-line bg-card p-4"
+        >
+          <Skeleton className="w-24" />
+          <Skeleton className="w-40" />
+        </div>
+      ))}
     </div>
   );
 }

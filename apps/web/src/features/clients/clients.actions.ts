@@ -17,11 +17,12 @@ const PLACES = { conflicts: { CLIENT_EXISTS: 'ice' } };
 
 type Saved = ActionResult<{ name: string }>;
 
-// id null: a new client
+// id null: a new client. A devis or facture's editor picks the one returned, and keeps its page as it is
 export async function saveClient(
   id: string | null,
   input: ClientInput,
-): Promise<Saved> {
+  refreshPage = true,
+): Promise<ActionResult<Client>> {
   const parsed = clientSchema.safeParse(input);
   if (!parsed.success) {
     return fromZod(parsed.error);
@@ -48,8 +49,10 @@ export async function saveClient(
   if (!result.ok) {
     return toActionError(result.error, PLACES);
   }
-  refresh();
-  return { ok: true, data: { name: result.data.name } };
+  if (refreshPage) {
+    refresh();
+  }
+  return { ok: true, data: result.data };
 }
 
 export async function setClientArchived(

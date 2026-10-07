@@ -77,7 +77,7 @@ export type ActionRenewal =
   | { kind: 'renewed'; accessToken: string }
   | { kind: 'raced' | 'ended' | 'unreachable' };
 
-// Server Actions only: cookies can't change while a page is being drawn
+// Server Actions and Route Handlers only: cookies can't change while a page is being drawn
 export async function renewInAction(): Promise<ActionRenewal> {
   const refreshToken = (await cookies()).get(REFRESH_COOKIE)?.value;
   if (!refreshToken) {
