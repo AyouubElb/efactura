@@ -111,6 +111,9 @@ export class DraftProductDto {
   @ApiProperty({ example: 'pièce' })
   unit: string;
 
+  @ApiProperty({ example: 357500, description: 'Selling price before tax: the screen shows the margin' })
+  priceHtCentimes: number;
+
   @ApiProperty({ description: 'Archived since it was chosen: "Valider" refuses it' })
   archived: boolean;
 }

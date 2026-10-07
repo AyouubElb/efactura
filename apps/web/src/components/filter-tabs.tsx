@@ -10,6 +10,8 @@ export interface FilterTab {
   current: boolean;
   // Documents that need acting on, such as late invoices
   count?: number;
+  // 09's family: red to act now, amber to check soon
+  countTone?: 'act' | 'check';
 }
 
 export function FilterTabs({
@@ -37,7 +39,14 @@ export function FilterTabs({
         >
           {tab.label}
           {tab.count ? (
-            <span className="inline-grid h-4.5 min-w-4.5 place-items-center rounded-xs bg-red-tint px-1 text-stamp font-bold text-red tabular-nums">
+            <span
+              className={cn(
+                'inline-grid h-4.5 min-w-4.5 place-items-center rounded-xs px-1 text-stamp font-bold tabular-nums',
+                tab.countTone === 'check'
+                  ? 'bg-amber-tint text-amber'
+                  : 'bg-red-tint text-red',
+              )}
+            >
               {tab.count}
             </span>
           ) : null}

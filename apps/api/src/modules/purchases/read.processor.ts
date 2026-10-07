@@ -139,7 +139,7 @@ export class ReadProcessor extends WorkerHost {
     const reason =
       error.name === 'UnrecoverableError'
         ? error.message
-        : `La lecture a échoué ${job.attemptsMade} fois : utilisez « Relancer »`;
+        : `La lecture a échoué ${job.attemptsMade} fois : utilisez « Relire »`;
     try {
       await this.prisma.$transaction(async (tx) => {
         const { count } = await tx.purchaseInvoice.updateMany({

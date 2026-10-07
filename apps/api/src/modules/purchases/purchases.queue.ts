@@ -31,7 +31,7 @@ export class PurchasesQueue {
     queue.on('error', (error) => logRedisError(this.logger, error));
   }
 
-  // A new job id each time: "Relancer" reads again on purpose
+  // A new job id each time: "Relire" reads again on purpose
   async read(purchaseId: string): Promise<void> {
     await withTimeout(
       this.queue.add(READ_JOB, { purchaseId }, { jobId: randomUUID() }),

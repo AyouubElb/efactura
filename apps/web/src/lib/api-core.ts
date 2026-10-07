@@ -9,6 +9,8 @@ export interface ApiError {
   code: string;
   message: string;
   fields?: Record<string, string>;
+  // The achat a refused upload points at: the one already imported, or one whose read didn't start
+  purchaseId?: string;
 }
 
 export interface PageMeta {

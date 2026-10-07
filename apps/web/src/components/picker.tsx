@@ -29,6 +29,11 @@ interface Found<T> {
   items: T[];
 }
 
+export interface PickerSuggestions<T> {
+  label: string;
+  items: T[];
+}
+
 // Searches the server as you type, through the web's own /search address: the browser never calls the API
 export function Picker<T extends { id: string }>({
   list,
@@ -41,10 +46,11 @@ export function Picker<T extends { id: string }>({
   onPick,
   noMatch,
   action,
+  suggestions,
   align = 'start',
   className,
 }: {
-  list: 'clients' | 'products';
+  list: 'clients' | 'products' | 'suppliers';
   open: boolean;
   onOpenChange: (open: boolean) => void;
   trigger: React.ReactNode;
@@ -55,6 +61,8 @@ export function Picker<T extends { id: string }>({
   noMatch: (text: string) => string;
   // The last row, such as "Créer le client « riad »"
   action?: (text: string) => PickerAction | null;
+  // Shown before any typing, instead of the first rows by name
+  suggestions?: PickerSuggestions<T>;
   align?: 'start' | 'end';
   className?: string;
 }) {
@@ -64,9 +72,10 @@ export function Picker<T extends { id: string }>({
   const [searching, setSearching] = useState(false);
   // The row Enter picks: the best match, else the last row's action
   const [active, setActive] = useState('');
+  const suggesting = !text.trim() && (suggestions?.items.length ?? 0) > 0;
 
   useEffect(() => {
-    if (!open) {
+    if (!open || suggesting) {
       return;
     }
     const controller = new AbortController();
@@ -105,18 +114,32 @@ export function Picker<T extends { id: string }>({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [open, text, list]);
+  }, [open, text, list, suggesting]);
 
   function changeOpen(next: boolean) {
     if (!next) {
       setText('');
       setFound(null);
       setError(null);
+    } else {
+      setActive(suggestions?.items[0]?.id ?? '');
     }
     onOpenChange(next);
   }
 
+  function changeText(next: string) {
+    setText(next);
+    if (!next.trim()) {
+      setActive(suggestions?.items[0]?.id ?? '');
+    }
+  }
+
   const last = action?.(text.trim()) ?? null;
+  const rows = suggesting
+    ? (suggestions?.items ?? [])
+    : error
+      ? []
+      : (found?.items ?? []);
   const icon = searching ? (
     <CircleNotchIcon
       aria-hidden
@@ -139,13 +162,17 @@ export function Picker<T extends { id: string }>({
         >
           <CommandInput
             value={text}
-            onValueChange={setText}
+            onValueChange={changeText}
             placeholder={placeholder}
             maxLength={100}
             icon={icon}
           />
           <CommandList>
-            {error ? (
+            {suggesting ? (
+              <p className="caps px-2 pt-2 pb-1 text-pencil">
+                {suggestions?.label}
+              </p>
+            ) : error ? (
               <p role="alert" className="px-2 py-2 text-label text-red">
                 {error}
               </p>
@@ -158,22 +185,21 @@ export function Picker<T extends { id: string }>({
                 </p>
               )
             )}
-            {!error &&
-              found?.items.map((item) => (
-                <CommandItem
-                  key={item.id}
-                  value={item.id}
-                  onSelect={() => {
-                    onPick(item);
-                    changeOpen(false);
-                  }}
-                >
-                  {renderItem(item)}
-                </CommandItem>
-              ))}
+            {rows.map((item) => (
+              <CommandItem
+                key={item.id}
+                value={item.id}
+                onSelect={() => {
+                  onPick(item);
+                  changeOpen(false);
+                }}
+              >
+                {renderItem(item)}
+              </CommandItem>
+            ))}
             {last && (
               <>
-                {found && found.items.length > 0 && <CommandSeparator />}
+                {rows.length > 0 && <CommandSeparator />}
                 <CommandItem
                   value={ACTION}
                   onSelect={() => {

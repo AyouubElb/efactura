@@ -9,3 +9,6 @@ export interface Supplier {
   email: string | null;
   archivedAt: string | null;
 }
+
+// What the supplier picker shows and keeps
+export type SupplierOption = Pick<Supplier, 'id' | 'name' | 'ice' | 'city'>;

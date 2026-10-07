@@ -13,6 +13,15 @@ export function parseMoneyInput(text: string): number | null {
   }
 }
 
+// A supplier's discount line prints "-150,00": its sign is kept
+export function parseSignedMoneyInput(text: string): number | null {
+  const negative = /^\s*[-−]/.test(text);
+  const centimes = parseMoneyInput(
+    negative ? text.replace(/^\s*[-−]/, '') : text,
+  );
+  return centimes !== null && negative ? -centimes : centimes;
+}
+
 export function moneyInputValue(centimes: number): string {
   return formatMoney(centimes);
 }

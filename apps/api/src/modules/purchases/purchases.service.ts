@@ -43,7 +43,7 @@ const EXTENSIONS: Record<FileType, string> = {
 
 // A worker that died mid-read leaves the row "reading": after this, it shows as failed
 const STUCK_AFTER_MS = 10 * 60_000;
-const STUCK_MESSAGE = "La lecture n'a pas abouti : utilisez « Relancer »";
+const STUCK_MESSAGE = "La lecture n'a pas abouti : utilisez « Relire »";
 
 interface SummaryRow {
   id: string;
@@ -201,7 +201,7 @@ export class PurchasesService {
     return this.get(id, user);
   }
 
-  // "Relancer": a failed read, one never queued, or one stuck after a restart
+  // "Relire": a failed read, one never queued, or one stuck after a restart
   async retry(id: string, user: AuthUser): Promise<PurchaseDetailDto> {
     const row = await this.prisma.purchaseInvoice.findUniqueOrThrow({
       where: { id },
@@ -288,12 +288,14 @@ export class PurchasesService {
         where: { id, status: 'reading' },
         data: {
           status: from === 'uploaded' ? 'uploaded' : 'failed',
-          error: "La lecture n'a pas pu démarrer : utilisez « Relancer »",
+          error: "La lecture n'a pas pu démarrer : utilisez « Relire »",
         },
       });
+      // The achat exists: the screen opens it, where "Relire" waits
       throw new ServiceUnavailableException({
         code: 'READ_NOT_QUEUED',
-        message: "Facture enregistrée, mais la lecture n'a pas pu démarrer : utilisez « Relancer »",
+        message: "Facture enregistrée, mais la lecture n'a pas pu démarrer : utilisez « Relire »",
+        purchaseId: id,
       });
     }
   }
@@ -314,7 +316,7 @@ export class PurchasesService {
     }
     const rows = await this.prisma.product.findMany({
       where: { id: { in: [...ids] } },
-      select: { id: true, name: true, reference: true, unit: true, archivedAt: true },
+      select: { id: true, name: true, reference: true, unit: true, priceHtCentimes: true, archivedAt: true },
       orderBy: { id: 'asc' },
     });
     return rows.map(({ archivedAt, ...product }) => ({ ...product, archived: archivedAt !== null }));

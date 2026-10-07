@@ -2,6 +2,10 @@ import type { NextRequest } from 'next/server';
 import type { Client } from '@/features/clients/clients.types';
 import type { ProductOption } from '@/features/documents/documents.types';
 import type { Product } from '@/features/products/products.types';
+import type {
+  Supplier,
+  SupplierOption,
+} from '@/features/suppliers/suppliers.types';
 import { apiRead } from '@/lib/api-server';
 
 const MAX_TEXT = 100;
@@ -34,6 +38,12 @@ export async function GET(
         ? Response.json({ items: result.data.map(productOption) })
         : failed(result.error.statusCode);
     }
+    case 'suppliers': {
+      const result = await apiRead<Supplier[]>(`/suppliers?${query}`);
+      return result.ok
+        ? Response.json({ items: result.data.map(supplierOption) })
+        : failed(result.error.statusCode);
+    }
     default:
       return Response.json({ error: 'Liste inconnue.' }, { status: 404 });
   }
@@ -48,6 +58,10 @@ function productOption(product: Product): ProductOption {
     priceHtCentimes: product.priceHtCentimes,
     tvaRateBp: product.tvaRateBp,
   };
+}
+
+function supplierOption({ id, name, ice, city }: Supplier): SupplierOption {
+  return { id, name, ice, city };
 }
 
 function failed(statusCode: number) {

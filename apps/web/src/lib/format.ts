@@ -34,3 +34,8 @@ export function momentInMorocco(moment: string | Date): string {
   const date = new Date(moment);
   return `${DAY.format(date)} ${TIME.format(date)}`;
 }
+
+// "2026-10-05T09:42:00Z" → "10:42"
+export function timeInMorocco(moment: string | Date): string {
+  return TIME.format(new Date(moment));
+}

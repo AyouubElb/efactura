@@ -5,7 +5,7 @@ const WHY: Record<PurchaseStatus, string> = {
   uploaded: 'Lecture en cours : attendez son résultat',
   reading: 'Lecture en cours : attendez son résultat',
   ready: 'Enregistrement impossible : réessayez',
-  failed: "La lecture n'a pas abouti : utilisez « Relancer »",
+  failed: "La lecture n'a pas abouti : utilisez « Relire »",
   confirmed: 'Achat déjà validé : il ne peut plus être modifié',
   discarded: 'Achat écarté : il ne peut plus être modifié',
 };
